@@ -18,15 +18,19 @@
   var Uduf = global.Uduf = global.Uduf || {};
   var U = Uduf.util;
 
+  /* Tuned so the whole run — start delay, three lines typed, two
+     erased, holds between them — lands at roughly 2.2s, inside the
+     2.5s budget with headroom for slow frames. */
   var DEFAULTS = {
-    typeMs: 34,        /* per character, first pass */
+    typeMs: 25,        /* per character, first pass */
     typeAccel: 0.55,   /* multiplier reached at the end of the line */
-    holdMs: 620,       /* pause on a complete line */
-    eraseMs: 15,       /* per character, backspacing out */
+    holdMs: 340,       /* pause on a complete line */
+    eraseMs: 12,       /* per character, backspacing out */
     finalHoldMs: Infinity,
     maxPx: 200,        /* ceiling for the fitted size */
     minPx: 26,
-    startDelayMs: 260
+    startDelayMs: 150,
+    nextLineMs: 70     /* beat before the following line starts */
   };
 
   function AnimatedText(node, options) {
@@ -101,20 +105,23 @@
     if (n < line.length) {
       this.timer = setTimeout(function () { self.write(line, n + 1, ms); }, ms);
     } else {
+      /* The last line settles the instant it is typed — there is
+         nothing left to wait for. Only intermediate lines hold. */
+      var last = this.i === this.lines.length - 1;
+      if (last) { this.settle(); return; }
       this.timer = setTimeout(function () { self.hold(); }, this.opts.holdMs);
     }
   };
 
   AnimatedText.prototype.hold = function () {
     var self = this;
-    var last = this.i === this.lines.length - 1;
-    if (last) {
-      this.settle();
-      return;
-    }
+    if (this.i === this.lines.length - 1) { this.settle(); return; }
     this.erase();
   };
 
+  /* One timer per character, not two. The previous version scheduled
+     an inner timer and then re-entered this method, which scheduled
+     another — doubling the real cost of every backspace. */
   AnimatedText.prototype.erase = function () {
     var self = this;
     var line = this.lines[this.i];
@@ -122,10 +129,10 @@
       if (self.typed > 0) {
         self.typed -= 1;
         self.out.textContent = line.slice(0, self.typed);
-        self.timer = setTimeout(function () { self.erase(); }, self.opts.eraseMs);
-      } else {
-        self.advance();
+        self.erase();
+        return;
       }
+      self.advance();
     }, this.opts.eraseMs);
   };
 
@@ -150,7 +157,7 @@
     }
     this.typed = 0;
     this.out.textContent = '';
-    this.timer = setTimeout(type, step ? 0 : 140);
+    this.timer = setTimeout(type, step ? 0 : this.opts.nextLineMs);
   };
 
   /* Final resting state: last line, no caret blink, accent colour. */

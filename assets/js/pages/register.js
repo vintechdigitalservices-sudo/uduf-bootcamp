@@ -1,15 +1,15 @@
 /* =========================================================
    UDUF AFRICA — Register page
 
-   CONTINUE does the whole job in one pass:
-     validate -> reserve a unique code -> take payment ->
-     store the record -> render the ticket + QR -> offer the PDF
+   Submitting does the whole job in one pass:
+     validate -> reserve a unique code -> store the record ->
+     render the ticket + QR -> offer the PDF
 
-   Payment is a sandbox until DATA.endpoints.checkout is set.
-   In sandbox mode the ticket is marked paid locally so the
-   flow, the ticket and the verification page can all be
-   exercised end to end. That is a demo affordance, not a
-   payment method — never ship it as one.
+   There is no payment step. A ticket is issued the moment the form
+   is completed, and the record is stored with paymentStatus
+   "pending". If DATA.endpoints.checkout is ever set, that call is
+   made first and the record is then marked confirmed — the rest of
+   the flow is identical either way.
    ========================================================= */
 (function (global) {
   'use strict';
@@ -22,39 +22,64 @@
   var wrapHost = null;
   var lastRecord = null;
 
+  /* ---------- Price panel ----------
+     Reads the featured tier from config, so the badge and the
+     selection cards can never drift apart. */
+  function priceMarkup() {
+    var cfg = Uduf.config;
+    var ticket = cfg.TICKETS.filter(function (t) { return t.featured; })[0] || cfg.TICKETS[0];
+    if (!ticket) return '';
+    return '' +
+      '<div class="price">' +
+        '<p class="price__k">' + U.esc(ticket.name) + ' Ticket</p>' +
+        '<p class="price__v">' + U.money(ticket.price) + '<small>per person</small></p>' +
+      '</div>';
+  }
+
   /* ---------- Sidebar ---------- */
   function sideMarkup() {
     var e = Uduf.config.EVENT;
-    var included = [
-      'Both full days, all sessions',
-      'Panels, Q&amp;A and practical exercises',
-      'Your 30/60/90-day action plan',
-      'Printable and downloadable ticket'
+
+    var blocks = [
+      {
+        title: 'What&rsquo;s included',
+        items: [
+          'Both full days, all sessions',
+          'Panels, Q&amp;A and practical exercises',
+          'Your 30/60/90-day action plan',
+          'Printable and downloadable ticket'
+        ]
+      },
+      {
+        title: 'Your ticket',
+        items: [
+          'Unique code, e.g. ' + e.ticketPrefix + '-9X2K7P',
+          'Scannable QR code',
+          'Issued the moment you finish'
+        ]
+      }
     ];
-    return '' +
-      '<div class="jstage" style="border-top-width:2px">' +
-        '<h2 class="jstage__title" style="font-size:var(--t-lg)">What&rsquo;s included</h2>' +
-        '<ul class="jstage__list">' +
-          included.map(function (t) { return '<li>' + t + '</li>'; }).join('') +
-        '</ul>' +
-      '</div>' +
-      '<div class="jstage" style="border-top-color:var(--green)">' +
-        '<h2 class="jstage__title" style="font-size:var(--t-lg)">Your ticket</h2>' +
-        '<ul class="jstage__list">' +
-          '<li>Unique code, e.g. ' + Uduf.config.EVENT.ticketPrefix + '-7K9P2X</li>' +
-          '<li>Scannable QR code</li>' +
-          '<li>Issued the moment you finish</li>' +
-        '</ul>' +
-      '</div>' +
-      '<div class="jstage" style="border-top-color:var(--orange)">' +
-        '<h2 class="jstage__title" style="font-size:var(--t-lg)">Need help?</h2>' +
-        '<ul class="jstage__list">' +
+
+    var help = blocks.map(function (b) {
+      return '' +
+        '<div class="aside__block">' +
+          '<h3>' + b.title + '</h3>' +
+          '<ul>' + b.items.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
+        '</div>';
+    }).join('');
+
+    var contact = '' +
+      '<div class="aside__block">' +
+        '<h3>Need help?</h3>' +
+        '<ul>' +
           '<li><a class="hl" href="mailto:' + e.email + '">' + U.esc(e.email) + '</a></li>' +
           e.phones.map(function (p) {
             return '<li><a class="hl" href="tel:' + p.replace(/[^\d]/g, '') + '">' + U.esc(p) + '</a></li>';
           }).join('') +
         '</ul>' +
       '</div>';
+
+    return help + contact;
   }
 
   function decorateFacts() {
@@ -62,7 +87,7 @@
     var map = {
       dates: ['calendar', e.dates],
       venue: ['pin', e.venue],
-      seats: ['users', '100\u2013150 places']
+      seats: ['users', e.capacity]
     };
     Object.keys(map).forEach(function (key) {
       var node = U.qs('[data-fact="' + key + '"]');
@@ -71,27 +96,25 @@
     });
   }
 
-  /* ---------- Payment ---------- */
+  /* ---------- Payment ----------
+     Only reached when a real checkout endpoint is configured. */
   function takePayment(record) {
     var endpoint = Uduf.config.DATA.endpoints.checkout;
 
-    if (endpoint) {
-      return global.fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketCode: record.ticketCode, email: record.email })
-      }).then(function (res) {
-        if (!res.ok) throw new Error('Checkout failed (' + res.status + ')');
-        return res.json();
-      }).then(function (data) {
-        return { ref: data.reference || data.ref || record.ticketCode, live: true };
-      });
-    }
-
-    /* Sandbox: a short honest delay, then a clearly-marked reference. */
-    return U.sleep(650).then(function () {
-      return { ref: 'SANDBOX-' + record.ticketCode, live: false };
+    return global.fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticketCode: record.ticketCode, email: record.email })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Checkout failed (' + res.status + ')');
+      return res.json();
+    }).then(function (data) {
+      return { ref: data.reference || data.ref || record.ticketCode, live: true };
     });
+  }
+
+  function checkoutConfigured() {
+    return !!(Uduf.config.DATA.endpoints && Uduf.config.DATA.endpoints.checkout);
   }
 
   /* ---------- Confirmation ---------- */
@@ -104,8 +127,8 @@
         '<span class="confirm__bannertxt">' +
           '<strong>You&rsquo;re registered</strong>' +
           '<span>' + (live
-            ? 'Payment received. Your ticket is ready.'
-            : 'Sandbox payment \u2014 no money was taken. Your ticket is ready.') +
+            ? 'Payment confirmed. Your ticket is ready.'
+            : 'Your ticket is ready \u2014 it was issued the moment you finished.') +
           '</span>' +
         '</span>' +
       '</div>';
@@ -156,19 +179,19 @@
     Uduf.db.createRegistration(payload)
       .then(function (record) {
         lastRecord = record;
-        return takePayment(record);
+        /* No checkout configured: the ticket is issued immediately. */
+        if (!checkoutConfigured()) return null;
+        return takePayment(record)
+          .then(function (pay) {
+            return Uduf.db.markConfirmed(record.ticketCode, pay.ref);
+          });
       })
-      .then(function (pay) {
-        return Uduf.db.markPaid(lastRecord.ticketCode, pay.ref).then(function (paid) {
-          lastRecord = paid;
-          return pay;
-        });
-      })
-      .then(function (pay) {
+      .then(function (confirmed) {
+        if (confirmed) lastRecord = confirmed;
         /* The form has done its job — take it out of the page. */
         var section = form && form.host && form.host.closest('section');
         if (section) section.style.display = 'none';
-        showConfirmation(lastRecord, pay.live);
+        showConfirmation(lastRecord, !!confirmed);
         Uduf.notify.ok('Ticket ' + lastRecord.ticketCode + ' issued.');
       })
       .catch(function (err) {
@@ -204,6 +227,9 @@
   Uduf.pages.register = {
     init: function () {
       decorateFacts();
+
+      var price = U.qs('[data-reg-price]');
+      if (price) price.innerHTML = priceMarkup();
 
       var side = U.qs('[data-reg-side]');
       if (side) side.innerHTML = sideMarkup();

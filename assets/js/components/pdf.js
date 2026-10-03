@@ -486,7 +486,7 @@
     var rows = [
       ['Ticket type', (ticket && ticket.name) || String(record.ticketType || '')],
       ['Registered', Uduf.util.formatDate(record.createdAt)],
-      ['Status', String(record.paymentStatus || 'paid').toUpperCase()]
+      ['Status', String(record.paymentStatus || 'pending').toUpperCase()]
     ];
     rows.forEach(function (row) {
       ticketLabel(page, row[0], M, y);

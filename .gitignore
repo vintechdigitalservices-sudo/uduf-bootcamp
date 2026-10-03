@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+*-debug.log
+
+# Secrets — never commit service account keys or local env files
+.env
+.env.*
+*.serviceaccount.json
+*-firebase-adminsdk-*.json
+
+# Build / editor / OS noise
+dist/
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

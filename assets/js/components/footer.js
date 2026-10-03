@@ -1,7 +1,9 @@
 /* =========================================================
    UDUF AFRICA — Footer (shared component, all three pages)
-   Compact. Logo, tagline, nav, clickable email and both
-   phone numbers, socials, and the fixed 2027 copyright.
+
+   Dark editorial close: brand statement, quick links, the support
+   inbox and both phone numbers, socials, and the fixed 2027
+   copyright. Everything here is read from config.js.
    ========================================================= */
 (function (global) {
   'use strict';
@@ -12,6 +14,7 @@
   function markup(page) {
     var cfg = Uduf.config;
     var e = cfg.EVENT;
+    var A = cfg.ASSETS;
 
     var nav = cfg.NAV.map(function (item) {
       var current = item.key === page ? ' aria-current="page"' : '';
@@ -33,19 +36,23 @@
         '<div class="ftr__top">' +
 
           '<div class="ftr__brand">' +
-            '<a href="index.html" aria-label="' + U.esc(e.org) + ' \u2014 home">' +
-              '<img class="ftr__logo" src="' + cfg.ASSETS.logoSmall + '" alt="' + U.esc(e.org) + '" width="256" height="256" loading="lazy" decoding="async">' +
+            '<a href="./" aria-label="' + U.esc(e.org) + ' \u2014 home">' +
+              /* The footer is always dark, so a single knocked-out copy
+                 of the transparent PNG is enough — no crossfade needed. */
+              '<span class="ftr__logo">' +
+                '<img src="' + A.logoMd + '" alt="" aria-hidden="true" width="400" height="138" loading="lazy" decoding="async">' +
+              '</span>' +
             '</a>' +
             '<p class="ftr__tag">' + U.esc(e.footerTagline) + '</p>' +
           '</div>' +
 
           '<div>' +
-            '<p class="ftr__colhead">Navigate</p>' +
+            '<p class="ftr__colhead">Quick Links</p>' +
             '<nav class="ftr__nav" aria-label="Footer">' + nav + '</nav>' +
           '</div>' +
 
           '<div>' +
-            '<p class="ftr__colhead">Get in touch</p>' +
+            '<p class="ftr__colhead">Support</p>' +
             '<div class="ftr__contact">' +
               '<a href="mailto:' + e.email + '">' +
                 Uduf.icons.icon('mail', 'icon') + '<span>' + U.esc(e.email) + '</span>' +

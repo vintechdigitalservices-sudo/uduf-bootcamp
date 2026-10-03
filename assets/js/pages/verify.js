@@ -36,10 +36,8 @@
         record.ticketLabel = ticketLabel(record.ticketType);
         current = record;
 
-        if (record.paymentStatus !== 'paid') {
-          render({ status: 'invalid', reason: 'unpaid', record: record });
-          return;
-        }
+        /* A ticket is valid from the moment it is issued — payment
+           status is not an entry condition. */
         if (record.checkedIn) {
           render({ status: 'already', record: record });
           return;

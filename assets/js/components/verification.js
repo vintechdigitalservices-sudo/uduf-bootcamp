@@ -6,10 +6,12 @@
    attendee in with one tap. No navigation, no extra clicks.
 
    States:
-     valid   → VALID TICKET, details, CHECK IN
-     already → ALREADY CHECKED IN, with the original time
-     unpaid  → registration found but not paid
+     valid   → VALID TICKET, attendee details, CHECK IN
+     already → ALREADY CHECKED IN, with the original timestamp
      invalid → INVALID TICKET
+
+   Payment is not an entry condition. A ticket is valid the moment
+   it is issued, so there is no fourth "unpaid" state to handle.
    ========================================================= */
 (function (global) {
   'use strict';
@@ -29,7 +31,7 @@
           '<span class="vinput__hint" data-vhint aria-hidden="true">UDUF-XXXXXX</span>' +
         '</div>' +
         '<button class="btn btn--lg btn--block" type="submit" data-vsubmit>' +
-          'Verify' + Uduf.icons.icon('search', 'icon') +
+          'Verify Ticket' + Uduf.icons.icon('search', 'icon') +
         '</button>' +
       '</form>';
   }
@@ -82,8 +84,7 @@
       row('Name', r.fullName) +
       row('Business', r.business) +
       row('Ticket Type', r.ticketLabel || r.ticketType) +
-      row('Ticket Code', r.ticketCode, 'vrow__v--code') +
-      row('Registration', r.paymentStatus === 'paid' ? 'Confirmed' : r.paymentStatus);
+      row('Ticket Code', r.ticketCode, 'vrow__v--code');
 
     var already = !!r.checkedIn;
 
@@ -97,7 +98,8 @@
           rows +
           (already && r.checkedInAt
             ? '<p class="vcard__stamp">' + Uduf.icons.icon('clock', 'icon') +
-              'Checked in ' + U.esc(U.formatDateTime(r.checkedInAt)) + '</p>'
+              'Checked in at ' + U.esc(U.formatTime(r.checkedInAt)) +
+              ', ' + U.esc(U.formatDate(r.checkedInAt)) + '</p>'
             : '') +
         '</div>' +
         '<div class="vcard__foot">' +
@@ -111,11 +113,9 @@
   }
 
   function invalidCard(reason) {
-    var copy = {
-      not_found: 'No registration was found for this ticket code.',
-      unpaid: 'This registration has not been paid for yet.',
-      error: 'Something went wrong looking up that code. Try again.'
-    }[reason] || 'No registration was found for this ticket code.';
+    var copy = reason === 'error'
+      ? 'Something went wrong looking up that code. Try again.'
+      : 'No registration found for this code';
 
     return '' +
       '<div class="vcard vcard--invalid" role="status">' +

@@ -170,9 +170,9 @@ exports.paymentWebhook = functions.https.onRequest(async (req, res) => {
   if (!snap.exists) return res.status(404).send('Unknown ticket');
 
   /* Idempotent: a retried webhook must not downgrade a paid ticket. */
-  if (snap.get('paymentStatus') !== 'paid') {
+  if (snap.get('paymentStatus') !== 'confirmed') {
     await ref.update({
-      paymentStatus: 'paid',
+      paymentStatus: 'confirmed',
       paymentRef: reference,
       qrCode: code,
       paidAt: admin.firestore.FieldValue.serverTimestamp()
@@ -204,7 +204,8 @@ exports.verifyTicket = functions.https.onCall(async (data, context) => {
     if (!snap.exists) return { ok: false, reason: 'not_found' };
 
     const r = snap.data();
-    if (r.paymentStatus !== 'paid') return { ok: false, reason: 'unpaid' };
+    /* Valid on issue: payment status is not an entry condition, so an
+       unconfirmed ticket still gets its attendee through the door. */
     if (r.checkedIn) {
       return { ok: false, reason: 'already', checkedInAt: r.checkedInAt };
     }

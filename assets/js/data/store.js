@@ -13,6 +13,11 @@
      ticketType, ticketCode, qrCode, paymentStatus, paymentRef,
      checkedIn, checkedInAt, createdAt
 
+   paymentStatus is "pending" from the moment a ticket is issued and
+   becomes "confirmed" only when a server-side payment confirmation
+   says so. It is deliberately NOT an entry gate: a valid ticket is a
+   valid ticket whether or not money has settled.
+
    Design rules baked in here:
      · Ticket codes are crypto-random and verified unique on write.
      · checkIn() is atomic — a second call for the same code fails.
@@ -107,6 +112,7 @@
   LocalAdapter.prototype.createRegistration = function (payload) {
     return this._tx(function (rows, self) {
       var now = Date.now();
+      var code = self._uniqueCode(rows);
       var record = {
         id: U.uid(),
         fullName: String(payload.fullName || '').trim(),
@@ -116,8 +122,10 @@
         address: String(payload.address || '').trim(),
         age: Number(payload.age) || null,
         ticketType: payload.ticketType,
-        ticketCode: self._uniqueCode(rows),
-        qrCode: null,
+        ticketCode: code,
+        /* The QR payload is the code itself, available from issue — a
+           ticket has to be scannable before any money moves. */
+        qrCode: code,
         paymentStatus: 'pending',
         paymentRef: null,
         checkedIn: false,
@@ -130,16 +138,26 @@
     });
   };
 
-  LocalAdapter.prototype.markPaid = function (code, paymentRef) {
+  /* Record a payment confirmation. This is only ever called with a
+     reference the checkout server just returned (see register.js) —
+     the browser never decides on its own that money arrived.
+
+     Note for a real deployment: with the Firestore adapter this write
+     comes straight from the browser, so anyone could call it. Point
+     DATA.endpoints.checkout at a callable function that confirms the
+     payment and writes the status server-side, and drop this call from
+     the client. Nothing else needs to change: entry already ignores
+     payment status. */
+  LocalAdapter.prototype.markConfirmed = function (code, paymentRef) {
     return this._tx(function (rows, self) {
       var record = rows.find(function (r) { return r.ticketCode === code; });
       if (!record) throw new Error('Registration not found for code ' + code);
-      /* Idempotent: a repeated webhook must not downgrade a paid ticket. */
-      if (record.paymentStatus === 'paid') return record;
-      record.paymentStatus = 'paid';
+      /* Idempotent: a repeated webhook must not downgrade a confirmed ticket. */
+      if (record.paymentStatus === 'confirmed') return record;
+      record.paymentStatus = 'confirmed';
       record.paymentRef = paymentRef || record.paymentRef || U.uid();
       record.qrCode = record.ticketCode;
-      record.paidAt = Date.now();
+      record.confirmedAt = Date.now();
       self._write(rows);
       return record;
     });
@@ -157,7 +175,9 @@
     return this._tx(function (rows) {
       var record = rows.find(function (r) { return r.ticketCode === normalised; });
       if (!record) return { ok: false, reason: 'not_found' };
-      if (record.paymentStatus !== 'paid') return { ok: false, reason: 'unpaid', record: project(record) };
+      /* A ticket is valid the moment it is issued. There is no payment
+         gate on the door — paymentStatus only records whether money has
+         been settled, and must never stop someone entering. */
       if (record.checkedIn) return { ok: false, reason: 'already', record: project(record) };
       record.checkedIn = true;
       record.checkedInAt = Date.now();
@@ -172,7 +192,7 @@
     var rows = this._read();
     return Promise.resolve({
       total: rows.length,
-      paid: rows.filter(function (r) { return r.paymentStatus === 'paid'; }).length,
+      confirmed: rows.filter(function (r) { return r.paymentStatus === 'confirmed'; }).length,
       checkedIn: rows.filter(function (r) { return r.checkedIn; }).length
     });
   };
@@ -185,9 +205,9 @@
   LocalAdapter.prototype.seedDemo = function () {
     return this._tx(function (rows, self) {
       var samples = [
-        { fullName: 'Amara Okonkwo',  business: 'Sable & Co.',        ticketType: 'EXECUTIVE', age: 31 },
-        { fullName: 'Tunde Balogun',  business: 'Lagos Retail Hub',   ticketType: 'STANDARD', age: 27, checkedIn: true },
-        { fullName: 'Zainab Abubakar',business: 'Kano Health Africa', ticketType: 'TEAM',     age: 35 }
+        { fullName: 'Amara Okonkwo',  business: 'Sable & Co.',        ticketType: 'INDIVIDUAL', age: 31 },
+        { fullName: 'Tunde Balogun',  business: 'Lagos Retail Hub',   ticketType: 'GROUP',      age: 27, checkedIn: true },
+        { fullName: 'Zainab Abubakar',business: 'Kano Health Africa', ticketType: 'STUDENT',    age: 35 }
       ];
       var created = samples.map(function (s) {
         var rec = {
@@ -201,7 +221,7 @@
           ticketType: s.ticketType,
           ticketCode: self._uniqueCode(rows),
           qrCode: null,
-          paymentStatus: 'paid',
+          paymentStatus: 'confirmed',
           paymentRef: U.uid(),
           checkedIn: !!s.checkedIn,
           checkedInAt: s.checkedIn ? Date.now() - 3600000 : null,
@@ -293,7 +313,7 @@
         age: Number(payload.age) || null,
         ticketType: payload.ticketType,
         ticketCode: code,
-        qrCode: null,
+        qrCode: code,
         paymentStatus: 'pending',
         checkedIn: false,
         checkedInAt: null,
@@ -305,19 +325,20 @@
     });
   };
 
-  /* Payment confirmation MUST come from the server (webhook / function).
-     The client only asks; it never asserts that money arrived. */
-  FirestoreAdapter.prototype.markPaid = function (code, paymentRef) {
+  /* Records a confirmation the checkout server reported. See the note on
+     LocalAdapter.markConfirmed: in a real deployment this write belongs
+     on the server, not in the browser. */
+  FirestoreAdapter.prototype.markConfirmed = function (code, paymentRef) {
     var col = this.col, sdk = this.sdk;
     return col.where('ticketCode', '==', U.normaliseTicketCode(code)).limit(1).get()
       .then(function (snap) {
         if (snap.empty) throw new Error('Registration not found.');
         var doc = snap.docs[0];
         return doc.ref.set({
-          paymentStatus: 'paid',
+          paymentStatus: 'confirmed',
           paymentRef: paymentRef || null,
           qrCode: doc.get('ticketCode'),
-          paidAt: sdk[0].serverTimestamp()
+          confirmedAt: sdk[0].serverTimestamp()
         }, { merge: true });
       })
       .then(function () { return this.findByCode(code); }.bind(this));
@@ -346,7 +367,7 @@
           return tx.get(docRef).then(function (fresh) {
             var data = fresh.data();
             if (!data) return { ok: false, reason: 'not_found' };
-            if (data.paymentStatus !== 'paid') return { ok: false, reason: 'unpaid', record: project(normalise(data)) };
+            /* Valid on issue — payment status never gates entry. */
             if (data.checkedIn) return { ok: false, reason: 'already', record: project(normalise(data)) };
             tx.update(docRef, { checkedIn: true, checkedInAt: sdk[0].serverTimestamp() });
             return {
@@ -394,7 +415,7 @@
     },
 
     createRegistration: function (payload) { return ready.then(function () { return adapter.createRegistration(payload); }); },
-    markPaid:          function (code, ref) { return ready.then(function () { return adapter.markPaid(code, ref); }); },
+    markConfirmed:     function (code, ref) { return ready.then(function () { return adapter.markConfirmed(code, ref); }); },
     findByCode:        function (code) { return ready.then(function () { return adapter.findByCode(code); }); },
     checkIn:           function (code) { return ready.then(function () { return adapter.checkIn(code); }); },
     stats:             function () { return ready.then(function () { return adapter.stats(); }); },

@@ -1,27 +1,35 @@
 /* =========================================================
    UDUF AFRICA — Header (shared component, all three pages)
 
-   One component, identical on every page. The only difference
-   is a `data-variant` on the page body:
-     over  — transparent over the hero, inverts the wordmark,
-             then turns solid white once the user scrolls.
-     solid — always white. Used on Register and Verify, which
-             have no dark hero to sit over.
+   One component, byte-identical markup on every page. The only
+   difference is a `data-variant` on <body>:
+     over  — transparent over the dark hero; the wordmark renders
+             white and the header turns solid white after 50px.
+     solid — always white. Register and Verify have no hero to sit
+             over, so they start in the solid state.
 
-   Mobile: logo + hamburger, with a drawer that animates in and
-   traps focus.
+   Mobile: logo + burger, with a full-screen dark drawer that
+   animates in and traps focus.
    ========================================================= */
 (function (global) {
   'use strict';
 
   var Uduf = global.Uduf = global.Uduf || {};
   var U = Uduf.util;
-  var C = function () { return Uduf.config; };
 
   var FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+  /* Scroll distance after which the transparent header becomes solid. */
+  var STICK_AT = 50;
+  /* Only start hiding the bar once the reader is properly into the
+     page, so it never disappears over the hero. */
+  var HIDE_FROM = 320;
+
   function headerMarkup(page) {
-    var cfg = C();
+    var cfg = Uduf.config;
+    var A = cfg.ASSETS;
+    var e = cfg.EVENT;
+
     var nav = cfg.NAV.map(function (item) {
       var current = item.key === page ? ' aria-current="page"' : '';
       return '<a class="nav__link" href="' + item.href + '"' + current + '>' + U.esc(item.label) + '</a>';
@@ -35,22 +43,30 @@
              Uduf.icons.icon('arrow', 'icon arrow') + '</a>';
     }).join('');
 
-    var phones = cfg.EVENT.phones.map(function (p) {
+    var phones = e.phones.map(function (p) {
       return '<a href="tel:' + p.replace(/[^\d]/g, '') + '">' +
              Uduf.icons.icon('phone', 'icon') + '<span>' + U.esc(p) + '</span></a>';
     }).join('');
 
+    /* Two copies of the same transparent PNG stacked in one grid cell:
+       the first keeps the brand colours, the second is knocked to solid
+       white. CSS crossfades them, so the mark is legible on the dark
+       hero and on the white bar without a filter-blur artefact and
+       without any white box behind it. */
+    var logo =
+      '<span class="hdr__logo">' +
+        '<img src="' + A.logoSm + '" alt="" aria-hidden="true" width="200" height="69" decoding="async">' +
+        '<img src="' + A.logoSm + '" alt="" aria-hidden="true" width="200" height="69" decoding="async">' +
+      '</span>';
+
+    var registerHref = (cfg.NAV.filter(function (n) { return n.key === 'register'; })[0] || {}).href || './register.html';
+
     return '' +
       '<header class="hdr" data-hdr>' +
         '<div class="hdr__in">' +
-          '<a class="hdr__brand" href="index.html" aria-label="' + U.esc(cfg.EVENT.org) + ' \u2014 home">' +
-            '<img class="hdr__logo" src="' + cfg.ASSETS.logoSmall + '" alt="' + U.esc(cfg.EVENT.org) + '" width="256" height="256" decoding="async">' +
-            '<span class="hdr__name">UDUF Africa' +
-              '<span>Active Leadership &amp; Entrepreneurship</span>' +
-            '</span>' +
-          '</a>' +
+          '<a class="hdr__brand" href="./" aria-label="' + U.esc(e.org) + ' \u2014 home">' + logo + '</a>' +
           '<nav class="nav" aria-label="Primary">' + nav + '</nav>' +
-          '<a class="btn btn--sm hdr__cta" href="register.html" data-nav>' +
+          '<a class="btn btn--sm hdr__cta" href="' + registerHref + '">' +
             'Register Now' + Uduf.icons.icon('arrow', 'icon') +
           '</a>' +
           '<button class="burger" type="button" aria-expanded="false" aria-controls="uduf-drawer" aria-label="Open menu">' +
@@ -61,9 +77,9 @@
       '<div class="drawer" id="uduf-drawer" data-drawer hidden>' +
         '<nav aria-label="Mobile">' + drawerLinks + '</nav>' +
         '<div class="drawer__foot">' +
-          '<a class="btn btn--block" href="register.html">Register Now' + Uduf.icons.icon('arrow', 'icon') + '</a>' +
+          '<a class="btn btn--block" href="' + registerHref + '">Register Now' + Uduf.icons.icon('arrow', 'icon') + '</a>' +
           '<div class="drawer__meta">' +
-            '<a href="mailto:' + cfg.EVENT.email + '">' + Uduf.icons.icon('mail', 'icon') + '<span>' + U.esc(cfg.EVENT.email) + '</span></a>' +
+            '<a href="mailto:' + e.email + '">' + Uduf.icons.icon('mail', 'icon') + '<span>' + U.esc(e.email) + '</span></a>' +
             phones +
           '</div>' +
         '</div>' +
@@ -83,28 +99,29 @@
     var burger = U.qs('.burger', host);
     if (!hdr) return;
 
-    hdr.classList.add('hdr--over');
     if (variant === 'solid') hdr.classList.add('is-solid');
 
     /* ---------- Scroll state ---------- */
     var lastY = global.scrollY || 0;
     var ticking = false;
+
     function onScroll() {
       if (ticking) return;
       ticking = true;
       global.requestAnimationFrame(function () {
         ticking = false;
         var y = global.scrollY || 0;
-        var past = y > 24;
-        hdr.classList.toggle('is-stuck', past);
+        hdr.classList.toggle('is-stuck', y > STICK_AT);
+
         /* Reveal on scroll up, retract on scroll down — small, deliberate. */
-        if (!drawer.classList.contains('is-open')) {
-          var down = y > lastY && y > 220;
+        if (!drawer || !drawer.classList.contains('is-open')) {
+          var down = y > lastY && y > HIDE_FROM;
           hdr.classList.toggle('is-hidden', down);
         }
         lastY = y;
       });
     }
+
     global.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
 
@@ -160,10 +177,10 @@
 
     /* Close when the viewport grows past the mobile breakpoint. */
     global.addEventListener('resize', U.debounce(function () {
-      if (global.innerWidth > 940) close(false);
+      if (global.innerWidth > 1040) close(false);
     }, 150), { passive: true });
 
-    /* Close if focus escapes the drawer (click on the veil area). */
+    /* Close if focus escapes the drawer. */
     U.on(document, 'focusin', function (e) {
       if (!drawer.classList.contains('is-open')) return;
       if (drawer.contains(e.target) || hdr.contains(e.target)) return;

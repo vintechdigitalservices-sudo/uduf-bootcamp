@@ -2,8 +2,9 @@
    UDUF AFRICA — RegistrationForm
    SECURE YOUR SPOT.
 
-   Seven labelled fields plus an accuracy confirmation.
-   Labels are always visible — placeholders never carry the
+   Seven labelled fields — full name, phone, email, business,
+   address, age and ticket type — plus an accuracy confirmation.
+   Labels are always visible; placeholders never carry the
    meaning. Validation runs on blur and again on submit, and
    only ever reports the first problem in a field.
    ========================================================= */
@@ -51,16 +52,19 @@
       '</div>';
   }
 
+  /* Ticket selection. Cards are built from config.TICKETS, so adding
+     or repricing a tier is a one-line change in config.js. */
   function ticketTypes() {
     var tickets = Uduf.config.TICKETS;
     return '' +
       '<fieldset class="field field--full" data-field="ticketType" data-group="ticketType">' +
         '<legend class="field__label">Ticket Type <span class="req" aria-hidden="true">*</span></legend>' +
-        '<div class="ttypes ttypes--2">' +
+        '<div class="ttypes">' +
           tickets.map(function (t) {
             return '' +
               '<label class="ttype">' +
-                '<input type="radio" name="ticketType" value="' + t.id + '">' +
+                '<input type="radio" name="ticketType" value="' + U.esc(t.id) + '">' +
+                (t.featured ? '<span class="ttype__flag">Most popular</span>' : '') +
                 '<span class="ttype__top">' +
                   '<span class="ttype__name">' + U.esc(t.name) + '</span>' +
                   '<span class="ttype__price">' + U.money(t.price) + '</span>' +
@@ -116,19 +120,6 @@
             placeholder: '18'
           }) +
 
-          field('invite', {
-            label: 'How did you hear about us?', required: false,
-            type: 'select',
-            options: [
-              { value: '', label: 'Select one' },
-              { value: 'friend', label: 'A friend or colleague' },
-              { value: 'social', label: 'Social media' },
-              { value: 'whatsapp', label: 'WhatsApp' },
-              { value: 'email', label: 'Email from UDUF Africa' },
-              { value: 'other', label: 'Other' }
-            ]
-          }) +
-
           ticketTypes() +
 
         '</div>' +
@@ -143,11 +134,11 @@
 
         '<div class="form__actions">' +
           '<button class="btn btn--lg" type="submit" data-submit>' +
-            'Continue' + Uduf.icons.icon('arrow', 'icon') +
+            'Complete Registration' + Uduf.icons.icon('arrow', 'icon') +
           '</button>' +
           '<p class="form__note">' +
             Uduf.icons.icon('lock', 'icon') +
-            '<span>Your ticket is issued instantly after payment.</span>' +
+            '<span>Your ticket and QR code are issued the moment you finish.</span>' +
           '</p>' +
         '</div>' +
 
@@ -241,7 +232,6 @@
       address: valueOf('address').trim(),
       age: Number(valueOf('age').trim()),
       ticketType: valueOf('ticketType'),
-      invite: valueOf('invite'),
       confirmed: true
     };
   }

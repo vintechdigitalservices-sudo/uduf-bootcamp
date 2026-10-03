@@ -28,19 +28,23 @@
   function markup(record) {
     var E = Uduf.config.EVENT;
     var info = ticketInfo(record.ticketType);
-    var paid = record.paymentStatus === 'paid';
+    var confirmed = record.paymentStatus === 'confirmed';
 
     return '' +
       '<article class="tk" data-ticket>' +
 
         '<div class="tk__top">' +
           '<div class="tk__brand">' +
-            '<img class="tk__logo" src="' + Uduf.config.ASSETS.logoTiny + '" alt="" width="128" height="128" decoding="async">' +
+            /* Container + inner img: the CSS sizes the box and knocks
+               the inner image to white, because the strip behind it is ink. */
+            '<span class="tk__logo">' +
+              '<img src="' + Uduf.config.ASSETS.logoTiny + '" alt="" width="200" height="69" decoding="async">' +
+            '</span>' +
             '<span class="tk__brandtext">' + U.esc(E.org) + '</span>' +
           '</div>' +
-          '<span class="tk__status' + (paid ? '' : ' tk__status--pending') + '">' +
-            Uduf.icons.icon(paid ? 'checkCircle' : 'clock', 'icon') +
-            (paid ? 'Confirmed' : 'Pending') +
+          '<span class="tk__status' + (confirmed ? '' : ' tk__status--pending') + '">' +
+            Uduf.icons.icon(confirmed ? 'checkCircle' : 'clock', 'icon') +
+            (confirmed ? 'Confirmed' : 'Issued') +
           '</span>' +
         '</div>' +
 
@@ -118,7 +122,7 @@
       var acts = U.el('div', { class: 'tk__acts' });
 
       var dl = Uduf.Button.create({
-        label: 'Download PDF', variant: 'green', arrow: false,
+        label: 'Download PDF', variant: 'green', icon: 'download',
         onClick: function () {
           if (opts.onDownload) return opts.onDownload(record);
           try {
@@ -130,16 +134,14 @@
           }
         }
       });
-      dl.insertBefore(Uduf.icons.icon('download', 'icon'), dl.firstChild);
 
       var pr = Uduf.Button.create({
-        label: 'Print', variant: 'ghost', arrow: false,
+        label: 'Print', variant: 'ghost', icon: 'print',
         onClick: function () {
           if (opts.onPrint) return opts.onPrint(record);
           global.print();
         }
       });
-      pr.insertBefore(Uduf.icons.icon('print', 'icon'), pr.firstChild);
 
       acts.appendChild(dl);
       acts.appendChild(pr);
