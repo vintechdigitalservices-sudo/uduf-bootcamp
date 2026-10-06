@@ -77,20 +77,16 @@
   const finalTitle = document.getElementById('final-title');
   if (finalTitle) {
     const spans = U.$$('span', finalTitle);
-    const show = () => spans.forEach((s) => s.classList.add('is-in'));
+    const set = (on) => spans.forEach((s) => s.classList.toggle('is-in', on));
 
     if (reduce || !('IntersectionObserver' in window)) {
-      show();
+      set(true);
     } else {
       const io = new IntersectionObserver(
         (entries) => {
-          entries.forEach((e) => {
-            if (!e.isIntersecting) return;
-            show();
-            io.disconnect();
-          });
+          entries.forEach((e) => set(e.isIntersecting));
         },
-        { threshold: 0.45 }
+        { threshold: 0.35 }
       );
       io.observe(finalTitle);
     }

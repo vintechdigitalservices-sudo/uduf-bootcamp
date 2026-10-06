@@ -86,12 +86,18 @@
           <img src="public/logo-sm.png" alt="UDUF Africa" width="240" height="84">
           <span class="brand__year">2027</span>
         </a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle navigation">
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation menu">
           <span class="nav-toggle__bar"></span>
           <span class="nav-toggle__bar"></span>
           <span class="nav-toggle__bar"></span>
         </button>
         <nav class="nav" id="primary-nav" aria-label="Primary">
+          <div class="nav__head">
+            <span class="nav__title">Menu</span>
+            <button class="nav__close" type="button" aria-label="Close menu" tabindex="-1">
+              <span class="nav__close-x" aria-hidden="true"></span>
+            </button>
+          </div>
           ${NAV.map(
             (item) =>
               `<a class="nav__link${here === item.href ? ' is-active' : ''}" href="${item.href}"${
@@ -100,6 +106,7 @@
           ).join('')}
           <a class="btn" href="register.html">Register Now</a>
         </nav>
+        <div class="nav-scrim" aria-hidden="true"></div>
       </div>`;
 
     const header = slot;
@@ -121,17 +128,24 @@
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
 
-    // mobile menu
+    // mobile menu (right-side drawer)
     const toggle = $('.nav-toggle', header);
     const nav = $('.nav', header);
+    const scrim = $('.nav-scrim', header);
+    const closeBtn = $('.nav__close', nav);
 
     const setMenu = (open) => {
       toggle.setAttribute('aria-expanded', String(open));
       nav.classList.toggle('is-open', open);
+      if (scrim) scrim.classList.toggle('is-open', open);
       document.body.classList.toggle('is-locked', open);
+      if (closeBtn) closeBtn.tabIndex = open ? 0 : -1;
+      if (open) toggle.blur();
     };
 
     toggle.addEventListener('click', () => setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
+    closeBtn?.addEventListener('click', () => setMenu(false));
+    scrim?.addEventListener('click', () => setMenu(false));
     nav.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
     window.addEventListener('resize', () => { if (window.innerWidth > 760) setMenu(false); });
@@ -202,9 +216,9 @@
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-in');
-          io.unobserve(entry.target);
+          /* replay the reveal whenever the element scrolls into view from
+             either direction, and hide it again once it leaves. */
+          entry.target.classList.toggle('is-in', entry.isIntersecting);
         });
       },
       { threshold: 0.15, rootMargin: '0px 0px -8% 0px' }
