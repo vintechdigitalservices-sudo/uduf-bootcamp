@@ -1,23 +1,55 @@
 # UDUF Africa — 2027 Active Leadership & Entrepreneurship Bootcamp
 
-Three-page static site: home, registration and ticket verification.
+Static site with a paid ticketing flow:
 
-**Registration is free.** Submitting the form issues a confirmed ticket and a
-scannable QR code immediately — there is no payment step.
+- **Home** (`index.html`) — hero, details, ticket prices
+- **Register** (`register.html`) — ticket wizard: choose **Individual (₦15,000)** or **Group (₦50,000 / 5 participants)**, then pay via **Selar (online)** or **bank transfer (manual)**, submit details and a payment receipt
+- **Verify** (`verify.html`) — check any ticket code or registration ID
+- **Admin** (`admin.html`) — password-protected dashboard to approve/reject payments and check in tickets
 
 ```
-index.html        Home (typing hero)
-register.html     Registration — ticket + QR issued on submit
-verify.html       Ticket verification — shows the ticket again with its QR
+index.html                Home
+register.html             Ticket wizard (paid)
+verify.html               Status / ticket lookup
+admin.html                Admin dashboard (needs /api/admin)
+404.html                  Not-found page
 
-assets/css/main.css      Design system
-assets/js/config.js      ← the only file you must edit
-assets/js/app.js         Shared runtime (header, footer, QR + ticket renderer)
-assets/js/qr.js          Self-contained QR encoder (no network, no service)
-assets/js/pages/*.js     Per-page behaviour
-backend/Code.gs          Google Apps Script backend (registrations + tickets)
-public/                  Images, icons, manifest
+assets/css/main.css       Design system (+ wizard/admin styles)
+assets/js/config.js       ← the only file you must edit
+assets/js/firebase-store.js   Firestore store + offline demo fallback
+assets/js/app.js          Shared runtime (header, footer, ticket renderer, money)
+assets/js/qr.js           Self-contained QR encoder (no network, no service)
+assets/js/pages/*.js      Per-page behaviour (register, verify, admin, home)
+
+api/admin.js              Vercel serverless admin API (firebase-admin)
+package.json              Server dependency (firebase-admin)
+firestore.rules           Firestore security rules
+backend/Code.gs           LEGACY Google Apps Script backend (unused, kept for reference)
+public/                   Images, icons, manifest
 ```
+
+## Ticket prices
+
+- **Individual** — ₦15,000 (1 participant)
+- **Group** — ₦50,000 (5 participants, ₦10,000 per person)
+
+There is **no free ticket**. Every person's full name, phone, email and age are
+required for each participant.
+
+## Flow
+
+1. Pick a ticket and a payment method.
+2. **Online:** register → pay on Selar (`https://selar.com/m/uduf-africa`) →
+   come back (or check your status) once the payment is confirmed.
+   **Manual:** transfer to the bank shown on the page and upload a receipt.
+3. Registration is saved as **pending** — the admin reviews the receipt/Selar
+   payment and either approves (issuing one ticket per participant) or rejects.
+4. On approval the attendee sees their ticket and QR, plus the **WhatsApp
+   group** link.
+
+Payment statuses: `pending_payment` (chose Selar, hasn't paid) →
+`pending_verification` (receipt/Selar submitted, awaiting review) →
+`verified` / `rejected`. Ticket status: `none` → `generated` → `checked_in`.
 
 ## Quick preview
 
@@ -28,164 +60,97 @@ python -m http.server 8000
 # open http://localhost:8000
 ```
 
-Opening `index.html` directly with `file://` also previews fine, but the
-backend requires `http(s)`.
+Without Firestore credentials the site runs in **offline demo mode**: data is
+kept in the browser's localStorage and tickets are issued instantly (there is
+no admin) so the whole flow stays testable.
 
-## Deploying to Vercel
+## Production setup
 
-This is a plain static site — there is no build step. The rules that make it
-resolve on Vercel are in `vercel.json` at the repo root:
+### 1. Firebase (Free/Blaze, Firestore in `original-concert`)
 
-- `outputDirectory: "."` — serve the repo root as-is, so `/` finds `index.html`.
-- `cleanUrls: true` — `/register` works as well as `/register.html`.
-- Explicit rewrites for `/register` and `/verify` (and their trailing-slash
-  forms).
-- Long `Cache-Control` on `assets/` and `public/`.
+1. In `assets/js/config.js`, the `firebase` object already contains the public
+   web config for the project.
+2. Load `firestore.rules` into **Firestore → Rules** (in
+   Console → Firestore → Rules). These allow anyone to *create a pending*
+   registration and read their own, block listing, and keep ticket writes
+   server-only.
+3. Optional: set Firestore **Indexes** for `registrations` combined queries if
+   you add any in the admin API.
 
-When you add the project in Vercel, keep the default root directory and
-Framework Preset, or choose **Other**. If you previously created the project
-with a different **Root Directory** (e.g. `public` or `dist`), Vercel will 404
-— point it back at the repository root and redeploy.
+### 2. Admin API on Vercel
+
+`api/admin.js` is the only place privileged admin credentials exist. In
+**Vercel → Project → Settings → Environment Variables** set:
+
+| Variable | Value |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | JSON string of the Firebase **Admin SDK** service-account key (Project Settings → Service accounts → Generate new private key) |
+| `ADMIN_PASSWORD` | a strong password the admin dashboard uses |
+
+Locally it falls back to reading the git-ignored
+`*-firebase-adminsdk-*.json` file in the repo root (that file must never be
+deployed or referenced by any browser code — `.gitignore` already excludes it).
+
+Install the server dependency:
 
 ```bash
-npx vercel       # first deploy
+npm install   # installs firebase-admin
+```
+
+### 3. Deploy
+
+```bash
+npx vercel
 npx vercel --prod
 ```
 
----
+`vercel.json` serves the repo root as-is (`outputDirectory: "."`), enables
+clean URLs, and rewrites `/register`, `/verify` and `/admin` to their `.html`
+files. Keep the default root directory, or choose a null/buildless preset —
+the `api/` folder is picked up automatically as a serverless function.
 
-## 1. Point the site at your backend
+## At the door
 
-Registrations have somewhere to go only after you create the backend. Until
-then the site runs in **offline demo mode**: tickets are stored in the browser
-and nothing is sent anywhere.
+Open `admin.html` (or `/admin`), sign in with `ADMIN_PASSWORD`, open the
+**Check-in** tab and scan/type the QR payload. Both `UDUF-1234-5678` and the
+raw scanned `UDUF2027/UDUF-1234-5678` work. `Undo` reverses a mistaken scan.
 
-### Create the Google Sheet
+Attendees can re-open `verify.html` and enter their ticket code or their
+`UDUF-REG-XXXXXXXX` registration ID to see/print their tickets.
 
-Create a Google Sheet. Row 1 must be:
+## Backend references (legacy)
 
-```
-Code | Full Name | Phone | Email | Age | Business / Organization | Address |
-Ticket Type | Amount | Status | Registered At | Confirmed At | Checked In At
-```
-
-`Amount` is unused now that registration is free — leave it blank.
-
-### Create the Apps Script
-
-1. [script.google.com](https://script.google.com) → **New project**
-2. Delete the placeholder code, paste in `backend/Code.gs`
-3. Set `SHEET_ID` near the top to the ID from your sheet URL
-   (`https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit`)
-4. Save, then pick `setup` from the function dropdown and click **Run**.
-   Approve the permission prompt.
-5. **Deploy → New deployment → Web app**
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-6. Copy the `.../exec` URL
-
-### Connect it
-
-In `assets/js/config.js`:
-
-```js
-endpoint: 'https://script.google.com/macros/s/AKfy.../exec',
-```
-
-That is the only required change.
-
----
-
-## 2. How tickets work
-
-A row is written with `Status = confirmed` the moment the form is submitted,
-and the code comes straight back to the page. There is nothing to approve.
-
-| Status | Meaning | Verify result |
-|---|---|---|
-| `confirmed` | Ticket issued | **Valid** |
-| `checked_in` | Already used for entry | Already used |
-| anything else | Not a ticket | Invalid |
-
-### At the door
-
-Scan the QR at `verify.html`, or type/paste the code. Both
-`UDUF-1234-5678` and the raw scanned string `UDUF2027/UDUF-1234-5678` work —
-the page normalises whatever it is given.
-
-Run `checkIn('UDUF-1234-5678')` from the Apps Script editor after a ticket has
-been used. `undoCheckIn()` reverses a mistake. `listCodes()` dumps every code.
-
----
-
-## Ticket codes and the QR
-
-Codes are `UDUF-XXXX-XXXX`, generated server-side and checked for uniqueness.
-
-The QR payload is `UDUF2027/<CODE>` — for example `UDUF2027/UDUF-1234-5678`.
-That is deliberately alphanumeric-only (A–Z, 0–9, `-`, `/`), which keeps the
-symbol in its most compact QR mode so it scans quickly on an old phone.
-
-`assets/js/qr.js` is a complete QR encoder (ISO/IEC 18004: Reed–Solomon
-correction, block interleaving, all eight data masks with penalty scoring, BCH
-format and version info, versions 1–10, EC levels L/M/Q/H). It runs entirely in
-the browser — ticket codes are never sent to a third-party QR service. Output
-was verified module-for-module against the `qrcode` reference implementation
-across all four EC levels.
-
----
-
-## Optional: Firestore instead of Google Sheets
-
-Keep `register.js` and `verify.js` as they are and replace the `Util.post`
-calls in `assets/js/app.js` with your own functions. The response contract
-they expect is:
-
-```js
-// register
-{ ok: true, code: 'UDUF-1234-5678', status: 'confirmed' }
-
-// verify
-{ ok: true, status: 'valid' | 'checked_in' | 'not_found', ticket: {
-    code, fullName, ticketType
-} }
-```
-
----
+`backend/Code.gs` is the original Google Apps Script backend (free-ticket era,
+Google Sheet storage). It is **no longer used** — registrations now live in
+Firestore and tickets are issued by the admin API. The file is kept only for
+reference.
 
 ## Design notes
 
-Colours come from the UDUF logo: near-black `#0A0A0C` with amber `#F0871E`.
-They live in `:root` at the top of `main.css` — change `--amber` and `--ink`
-to re-skin the whole site.
+Colours come from the UDUF logo: near-black `#0A0A0C` with amber `#F0871E`,
+living in `:root` at the top of `main.css` (`--amber`, `--ink`, …).
 
-**There are no gradients anywhere.** Every surface, button, scrim and overlay
-is a flat colour; image legibility comes from a single flat `rgba()` scrim
-rather than a gradient fade.
-
-Type is **Barlow Condensed** for display and **Inter** for body, loaded from
-Google Fonts with system fallbacks.
-
-The hero types three lines in sequence and only then reveals the countdown and
-buttons. Every animation collapses to a static layout under
-`prefers-reduced-motion: reduce`.
+- No gradients anywhere — flat surfaces and flat `rgba()` scrims.
+- Type: **Barlow Condensed** (display) + **Inter** (body) via Google Fonts.
+- `assets/js/qr.js` is a complete ISO/IEC 18004 QR encoder (all 4 EC levels,
+  versions 1–10) that runs fully in the browser — codes are never sent to a
+  third-party service. The QR payload is `UDUF2027/<CODE>`.
+- Everything collapses to a static layout under `prefers-reduced-motion`.
 
 ### Page weight
 
-Kept deliberately lean — about **140 KB** for a first visit on mobile:
-
-- Hero uses `srcset` (640w / 1000w / 2000w), so phones fetch a 43 KB image
-  instead of the 237 KB original.
-- Header/footer logo is a 240×84 / 20 KB asset, not the 997×348 / 143 KB one.
+- Hero uses `srcset` (640w / 1000w / 2000w) so phones fetch a 43 KB image.
+- Header/footer logo is the small 240×84 asset, not the full-size one.
 - Below-the-fold images are `loading="lazy"`, sized and aspect-ratio hinted.
-- `assets/js/qr.js` is loaded only on `register.html` and `verify.html`.
-
----
 
 ## Before you launch
 
-- [ ] `SHEET_ID` set in `backend/Code.gs` and `setup()` run once
-- [ ] Web app deployed with access set to **Anyone**
-- [ ] `endpoint` pasted into `assets/js/config.js`
-- [ ] `udufafrica@gmail.com` correct in `config.js`
-- [ ] Ticket codes and QR codes tested on the actual door device
+- [ ] `firestore.rules` deployed to Firestore
+- [ ] `FIREBASE_SERVICE_ACCOUNT` and `ADMIN_PASSWORD` set in Vercel
+- [ ] `npm install` run so `api/admin.js` has `firebase-admin`
+- [ ] `payment.whatsappVerifyNumber` set in `assets/js/config.js` so the
+      "verify via WhatsApp" button appears
+- [ ] Prices/bank details confirmed in `assets/js/config.js`
+- [ ] Approve a real test registration and confirm tickets + QR render
+- [ ] Check-in scanned on the actual door device
+- [ ] Site-wide grep for "free"/"complimentary" comes back empty

@@ -2062,3 +2062,466 @@ h1, h2, h3, h4 {
   .scroll-cue__line::after { animation: none; }
   .hero__media img { transform: scale(1); }
 }
+
+/* ============================================================
+   TICKETING WIZARD + PAYMENT (register / verify / admin)
+   ============================================================ */
+
+.form-sub {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 1.4rem 0 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.form-sub:first-child { margin-top: 0; }
+
+/* payment-method choice */
+.pay-option {
+  position: relative;
+  display: block;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  transition: border-color 0.35s var(--ease-out), background 0.35s var(--ease-out);
+}
+
+.pay-option input { position: absolute; opacity: 0; pointer-events: none; }
+
+.pay-option__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pay-option__radio {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--grey-dim);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.3s var(--ease-out);
+}
+
+.pay-option__radio::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--amber);
+  transform: scale(0);
+  transition: transform 0.3s var(--ease-back);
+}
+
+.pay-option:has(input:checked) {
+  border-color: var(--amber);
+  background: rgba(240, 135, 30, 0.07);
+}
+
+.pay-option:has(input:checked) .pay-option__radio { border-color: var(--amber); }
+.pay-option:has(input:checked) .pay-option__radio::after { transform: scale(1); }
+
+.pay-option__name {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pay-option__tag {
+  margin-left: auto;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  border: 1px solid rgba(240, 135, 30, 0.3);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(240, 135, 30, 0.08);
+}
+
+.pay-option__note {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--grey);
+  margin-top: 0.7rem;
+  padding-left: 2.4rem;
+}
+
+/* checkbox (purchaser is participant 1) */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--cream);
+}
+
+.check input { position: absolute; opacity: 0; pointer-events: none; }
+
+.check__box {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+  border: 2px solid var(--grey-dim);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.3s var(--ease-out), background 0.3s var(--ease-out);
+}
+
+.check__box::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.25s var(--ease-back);
+  margin-top: -2px;
+}
+
+.check input:checked + .check__box { background: var(--amber); border-color: var(--amber); }
+.check input:checked + .check__box::after { transform: rotate(-45deg) scale(1); }
+
+/* bank details card */
+.bank-card {
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  margin: 1.4rem 0;
+}
+
+.bank-card__title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.bank-card__title strong { color: var(--amber); }
+
+.bank-card__rows { display: grid; gap: 0.7rem; margin: 0; }
+
+.bank-card__row {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  gap: 0.9rem;
+  align-items: baseline;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.bank-card__row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.bank-card__row dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.bank-card__row dd {
+  margin: 0;
+  font-size: 0.98rem;
+  color: var(--cream);
+  overflow-wrap: anywhere;
+}
+
+.bank-card__acct { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+
+.bank-card__acct span {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--amber);
+}
+
+/* receipt upload */
+.upload { margin: 1.4rem 0; }
+
+.upload__drop {
+  width: 100%;
+  padding: 1.6rem 1.2rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  color: var(--grey);
+  transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out), background 0.3s var(--ease-out);
+}
+
+.upload__drop:hover { border-color: var(--amber); color: var(--cream); background: rgba(240, 135, 30, 0.05); }
+
+.upload__drop span { font-size: 0.86rem; }
+
+.upload__drop span b { color: var(--cream); font-weight: 600; }
+
+.upload__preview {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.upload__preview img {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  max-height: 260px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.upload__hint {
+  font-size: 0.78rem;
+  color: var(--grey-dim);
+  margin-top: 0.6rem;
+}
+
+/* WhatsApp row */
+.wa-row { margin: 1.4rem 0 0; }
+
+/* registration ID */
+.ref-id {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--amber-glow);
+  border-radius: var(--radius-sm);
+  background: rgba(240, 135, 30, 0.07);
+}
+
+.ref-id__label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.ref-id__value {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+
+.ref-id .btn { margin-left: auto; }
+
+/* WhatsApp group CTA — only shown to verified attendees */
+.whatsapp-cta {
+  margin-top: 1.8rem;
+  padding: 1.5rem 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(61, 214, 140, 0.06);
+  border-left: 3px solid var(--green);
+}
+
+.whatsapp-cta__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 1rem;
+}
+
+.whatsapp-cta__note {
+  font-size: 0.8rem;
+  color: var(--grey);
+  margin-top: 0.9rem;
+}
+
+/* gap between group-ticket passes */
+.pass-gap { height: 1rem; }
+
+/* spinner inside a primary button while submitting */
+.btn.is-loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.btn.is-loading::before {
+  content: '';
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* fifth detail tile reveal delay */
+.detail:nth-child(5).is-in { transition-delay: 0.4s; }
+
+/* ============================================================
+   ADMIN DASHBOARD (admin.html)
+   ============================================================ */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.6rem;
+}
+
+.admin-tab {
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grey);
+  transition: color 0.3s var(--ease-out), border-color 0.3s var(--ease-out), background 0.3s var(--ease-out);
+}
+
+.admin-tab:hover, .admin-tab.is-active {
+  color: var(--ink);
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.admin-card {
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.3s var(--ease-out), background 0.3s var(--ease-out);
+}
+
+.admin-card:hover { border-color: var(--amber); }
+
+.admin-card.is-open { border-color: var(--amber); background: rgba(240, 135, 30, 0.05); }
+
+.admin-card__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem 1.4rem;
+  align-items: start;
+}
+
+.admin-card__name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--cream);
+}
+
+.admin-card__meta {
+  font-size: 0.78rem;
+  color: var(--grey);
+  margin-top: 0.35rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-card__badge {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--grey);
+  white-space: nowrap;
+}
+
+.admin-badge--pending { color: var(--amber); border-color: rgba(240, 135, 30, 0.4); background: rgba(240, 135, 30, 0.08); }
+.admin-badge--verified { color: var(--green); border-color: rgba(61, 214, 140, 0.4); background: rgba(61, 214, 140, 0.08); }
+.admin-badge--rejected { color: var(--red); border-color: rgba(255, 92, 92, 0.4); background: rgba(255, 92, 92, 0.08); }
+
+.admin-detail {
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--line-soft);
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-detail dl { display: grid; gap: 0.5rem; margin: 0; }
+
+.admin-detail dt, .admin-detail dd { display: inline; margin: 0; }
+
+.admin-detail dt {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey-dim);
+}
+
+.admin-detail dd { color: var(--cream); }
+
+.admin-detail .part-label {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-top: 0.6rem;
+}
+
+.admin-receipt img {
+  max-height: 320px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.admin-stat {
+  font-size: 0.86rem;
+  color: var(--grey);
+  margin-bottom: 1.4rem;
+}
+
+.admin-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 1px dashed var(--line-soft);
+  border-radius: var(--radius);
+  color: var(--grey);
+}
+
+@media (max-width: 560px) {
+  .bank-card__row { grid-template-columns: 1fr; gap: 0.2rem; }
+  .admin-card__grid { grid-template-columns: 1fr; }
+  .ref-id .btn { margin-left: 0; }
+}

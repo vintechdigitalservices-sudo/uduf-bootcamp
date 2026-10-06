@@ -367,7 +367,11 @@ function initAmbient() {}
     },
 
     isOfflineMode() {
-      return !CFG.endpoint;
+      return !window.UDUFFire || !window.UDUFFire.isLive();
+    },
+
+    money(amount) {
+      return CFG.tickets ? CFG.tickets.format(amount) : (amount ? '₦' + amount : '');
     },
 
     /* ---------- Ticket + QR ----------
@@ -472,10 +476,12 @@ function initAmbient() {}
     },
 
     /* ---------- Register ----------
-       Registration is free, so this returns a confirmed ticket
-       straight away. */
+       Registration is saved to Firestore in a PENDING state.
+       Tickets are only generated after admin verification, so this
+       only returns a confirmed ticket in offline demo mode. */
     async registerTicket(data) {
-      if (this.isOfflineMode()) {
+      const fire = window.UDUFFire;
+      if (!fire) {
         const ticket = {
           ...data,
           code: this.makeCode(),
@@ -486,35 +492,76 @@ function initAmbient() {}
         return { ok: true, ticket };
       }
 
-      const res = await this.post({ action: 'register', ...data });
+      const res = await fire.createRegistration(data);
       if (!res.ok) return res;
-
-      const code = String(res.code || res.reference || '').toUpperCase();
-      if (!code) return { ok: false, message: 'The server did not return a ticket code.' };
-
-      const ticket = { ...data, code, status: 'confirmed' };
-      this.store.add(ticket); /* keep a local copy for offline re-checks */
-      return { ok: true, ticket };
+      if (res.record && res.record.ticketStatus === 'generated') {
+        const ticket = {
+          ...res.record,
+          code: res.record.ticketCode,
+          fullName:
+            res.record.purchaser && res.record.purchaser.fullName ? res.record.purchaser.fullName : res.record.refId,
+          status: 'confirmed',
+        };
+        return { ok: true, ticket, registration: res.record };
+      }
+      return { ok: true, registration: res.record, refId: res.refId };
     },
 
-    /* ---------- Verify ---------- */
+    /* ---------- Verify ----------
+       Looks a ticket up by ticket code (tickets/{code}) or, when the
+       input is a reference ID, reads the pending registration from
+       Firestore so status checks work before a ticket exists.
+       Returns { ok: true, status, ticket?, registration? }. */
     async lookupTicket(code) {
       const key = String(code || '').trim().toUpperCase();
       if (!key) return { ok: true, status: 'not_found' };
 
-      if (this.isOfflineMode()) {
-        const row = this.store.find(key);
-        if (!row) return { ok: true, status: 'not_found' };
-        /* mirror the backend's status mapping */
-        const status = String(row.status || 'confirmed');
-        return {
-          ok: true,
-          status: status === 'checked_in' ? 'checked_in' : 'valid',
-          ticket: row,
-        };
+      const fire = window.UDUFFire;
+      if (!fire) return this.lookupTicketLegacy(key);
+
+      /* Registration reference ID ("UDUF-REG-XXXXXXXX") */
+      if (key.indexOf('UDUF-REG-') === 0) {
+        const reg = await fire.getRegistration(key);
+        if (!reg) return { ok: true, status: 'not_found' };
+        return this.statusFromRegistration(reg);
       }
 
-      return this.post({ action: 'verify', code: key });
+      /* Plain ticket code */
+      const ticket = await fire.getTicket(key);
+      if (!ticket) return { ok: true, status: 'not_found' };
+      if (ticket.status === 'checked_in') return { ok: true, status: 'checked_in', ticket };
+      if (ticket.status === 'valid') return { ok: true, status: 'valid', ticket };
+      return { ok: true, status: 'not_found' };
+    },
+
+    /* Derives a readable lookup result from a registration record. */
+    statusFromRegistration(reg) {
+      if (!reg) return { ok: true, status: 'not_found' };
+      if (reg.ticketStatus === 'checked_in') {
+        return { ok: true, status: 'checked_in', registration: reg };
+      }
+      if (reg.paymentStatus === 'rejected') {
+        return { ok: true, status: 'rejected', registration: reg };
+      }
+      if (reg.paymentStatus === 'verified' && reg.ticketStatus === 'generated') {
+        return { ok: true, status: 'valid', registration: reg };
+      }
+      if (reg.paymentStatus === 'pending_verification') {
+        return { ok: true, status: 'pending_verification', registration: reg };
+      }
+      /* pending_payment (or anything else not finalised) */
+      return { ok: true, status: 'pending_payment', registration: reg };
+    },
+
+    lookupTicketLegacy(key) {
+      const row = this.store.find(key);
+      if (!row) return { ok: true, status: 'not_found' };
+      const status = String(row.status || 'confirmed');
+      return {
+        ok: true,
+        status: status === 'checked_in' ? 'checked_in' : 'valid',
+        ticket: row,
+      };
     },
   };
 

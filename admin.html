@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — UDUF Africa 2027 Bootcamp</title>
+<meta name="description" content="UDUF Africa 2027 Bootcamp — administrator dashboard for verifying payments and issuing tickets.">
+<meta name="author" content="UDUF Africa">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0A0A0C">
+<link rel="canonical" href="https://bootcamp.udufafrica.org/admin">
+<link rel="icon" href="public/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="public/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="public/apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__grain"></div>
+</div>
+
+<header class="header" data-header></header>
+
+<main id="main">
+
+  <section class="page-head">
+    <div class="shell">
+      <p class="eyebrow eyebrow--center">Staff Only</p>
+      <h1>Ticket <span class="accent">Admin</span></h1>
+      <p class="lede">Verify manual payments, approve or reject registrations, and check tickets at the door.</p>
+    </div>
+  </section>
+
+  <section class="section section--tight" style="padding-top:0">
+    <div class="shell" style="max-width:min(980px, 100% - 2.5rem)">
+
+      <!-- LOGIN -->
+      <div class="form-card" id="admin-login" hidden>
+        <legend class="form-legend"><span class="form-legend__step">1</span> Admin Login</legend>
+        <div class="field" data-field>
+          <label class="field__label" for="admin-password">Password</label>
+          <input class="field__input" type="password" id="admin-password" name="adminPassword" autocomplete="current-password"
+                 placeholder="Enter the administrator password." required>
+          <span class="field__error" data-error></span>
+        </div>
+        <div class="actions-row" style="justify-content:flex-start;margin-top:1.4rem">
+          <button class="btn" type="button" id="btn-login">Sign in</button>
+        </div>
+      </div>
+
+      <!-- PANEL -->
+      <div id="admin-panel" hidden>
+
+        <div class="admin-tabs">
+          <button class="admin-tab is-active" type="button" data-tab="pending_verification">Pending Verification</button>
+          <button class="admin-tab" type="button" data-tab="pending_payment">Pending Payment</button>
+          <button class="admin-tab" type="button" data-tab="verified">Verified</button>
+          <button class="admin-tab" type="button" data-tab="rejected">Rejected</button>
+          <button class="admin-tab" type="button" data-tab="checkin">Check-in</button>
+        </div>
+
+        <div id="checkin-panel" hidden class="form-card" style="margin-bottom:1.5rem">
+          <legend class="form-legend"><span class="form-legend__step">✓</span> Check-in a Ticket</legend>
+          <div class="verify-form">
+            <div class="field" data-field style="flex:1 1 220px">
+              <input class="field__input code-input" type="text" id="checkin-code" placeholder="UDUF-0000-0000"
+                     autocomplete="off" autocapitalize="characters" spellcheck="false">
+            </div>
+            <button class="btn" type="button" id="btn-checkin">Check in</button>
+            <button class="btn btn--ghost" type="button" id="btn-uncheckin">Undo</button>
+          </div>
+        </div>
+
+        <p class="admin-stat" id="admin-stat"></p>
+        <div id="admin-list" aria-live="polite"></div>
+
+        <div class="actions-row" style="margin-top:2rem">
+          <button class="btn btn--ghost" type="button" id="btn-logout">Sign out</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer" data-footer></footer>
+
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <div class="loader__ring"></div>
+    <p class="loader__text">Loading</p>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/pages/admin.js"></script>
+</body>
+</html>

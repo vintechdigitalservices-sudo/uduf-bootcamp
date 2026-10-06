@@ -2,6 +2,15 @@
  * ============================================================
  * UDUF Africa — Bootcamp Registration Backend
  * Google Apps Script (Google Sheet as the database)
+ *
+ * *** LEGACY — UNUSED ***
+ * ------------------------------------------------------------
+ * This backend belongs to the original FREE-TICKET release and
+ * is no longer wired up. The 2027 paid-ticket flow stores
+ * registrations in Firestore and issues tickets through the
+ * Vercel serverless admin API (api/admin.js). See firestore.rules,
+ * api/admin.js and assets/js/config.js. This file is kept only
+ * as a reference; do not deploy or redeploy it.
  * ============================================================
  *
  * SETUP

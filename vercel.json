@@ -8,8 +8,10 @@
   "rewrites": [
     { "source": "/register", "destination": "/register.html" },
     { "source": "/verify", "destination": "/verify.html" },
+    { "source": "/admin", "destination": "/admin.html" },
     { "source": "/register/", "destination": "/register.html" },
-    { "source": "/verify/", "destination": "/verify.html" }
+    { "source": "/verify/", "destination": "/verify.html" },
+    { "source": "/admin/", "destination": "/admin.html" }
   ],
   "headers": [
     {

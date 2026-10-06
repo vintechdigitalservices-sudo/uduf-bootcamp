@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verify Ticket — UDUF Africa 2027 Bootcamp</title>
-<meta name="description" content="Verify your 2027 Active Leadership &amp; Entrepreneurship Bootcamp ticket. Enter your ticket code or scan your QR code to confirm your registration.">
+<meta name="description" content="Check your ticket or registration for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp. Enter your ticket code or registration ID to see your payment and ticket status.">
 <meta name="author" content="UDUF Africa">
 <meta name="robots" content="index, follow">
 <meta name="theme-color" content="#0A0A0C">
@@ -20,7 +20,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://bootcamp.udufafrica.org/verify">
 <meta property="og:title" content="Verify your ticket — UDUF Africa 2027 Bootcamp">
-<meta property="og:description" content="Check your ticket for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp. Enter your ticket code or scan your QR code.">
+<meta property="og:description" content="Check your ticket or registration for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp by ticket code or registration ID.">
 <meta property="og:image" content="https://bootcamp.udufafrica.org/public/og-image.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
@@ -30,7 +30,7 @@
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Verify your ticket — UDUF Africa 2027 Bootcamp">
-<meta name="twitter:description" content="Check your ticket for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp.">
+<meta name="twitter:description" content="Check your ticket or registration for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp.">
 <meta name="twitter:image" content="https://bootcamp.udufafrica.org/public/og-image.jpg">
 <meta name="twitter:image:alt" content="UDUF Africa logo on a dark background">
 
@@ -67,14 +67,24 @@
     "email": "udufafrica@gmail.com",
     "url": "https://bootcamp.udufafrica.org/"
   },
-  "offers": {
-    "@type": "Offer",
-    "name": "Free registration",
-    "price": "0",
-    "priceCurrency": "NGN",
-    "availability": "https://schema.org/InStock",
-    "url": "https://bootcamp.udufafrica.org/register"
-  }
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Individual Ticket",
+      "price": "15000",
+      "priceCurrency": "NGN",
+      "availability": "https://schema.org/InStock",
+      "url": "https://bootcamp.udufafrica.org/register"
+    },
+    {
+      "@type": "Offer",
+      "name": "Group Ticket (5 participants)",
+      "price": "50000",
+      "priceCurrency": "NGN",
+      "availability": "https://schema.org/InStock",
+      "url": "https://bootcamp.udufafrica.org/register"
+    }
+  ]
 }
 </script>
 
@@ -100,7 +110,7 @@
     <div class="shell">
       <p class="eyebrow eyebrow--center">Verification</p>
       <h1>Verify <span class="accent">Ticket</span></h1>
-      <p class="lede">Enter your unique ticket code to verify your registration.</p>
+      <p class="lede">Enter your ticket code or your registration ID to check the status of your registration.</p>
     </div>
   </section>
 
@@ -109,13 +119,13 @@
 
       <form id="verify-form" novalidate>
         <div class="field" data-field>
-          <label class="field__label" for="code">Ticket Code</label>
+          <label class="field__label" for="code">Ticket Code or Registration ID</label>
           <div class="verify-form">
             <input class="field__input code-input" type="text" id="code" name="code"
                    placeholder="UDUF-0000-0000" autocomplete="off" autocapitalize="characters"
                    spellcheck="false" required>
             <button class="btn" type="submit" id="verify-btn">
-              <span data-btn-label>Verify Ticket</span>
+              <span data-btn-label>Check Status</span>
             </button>
           </div>
           <span class="field__error" data-error></span>
@@ -139,7 +149,10 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/firebase-store.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/qr.js"></script>
 <script src="assets/js/pages/verify.js"></script>

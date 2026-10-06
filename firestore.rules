@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------------------------------------------------
+       registrations
+       Clients may:
+         - CREATE (only while in a pending state — the shape is
+           checked so a user cannot self-approve)
+         - READ their own registration (by ID using the refId)
+         - UPDATE only from a pending state, and only the fields
+           listed below. They can never set verified / rejected,
+           ticketStatus, ticket codes, or amounts.
+       Listing is forbidden; the admin API uses the Admin SDK.
+    --------------------------------------------------------- */
+    match /registrations/{refId} {
+
+      function pendingFields() {
+        return request.resource.data.keys().hasOnly([
+          'refId', 'purchaser', 'participants', 'ticketType',
+          'ticketLabel', 'paymentMethod', 'amount',
+          'receipt', 'whatsapp', 'source', 'createdAt',
+          'paymentStatus', 'ticketStatus', 'ticketCode',
+          'ticketCodes', 'rejectionReason', 'reviewedAt',
+          'reviewedBy'
+        ]);
+      }
+
+      function validForCreate() {
+        return request.resource.data.paymentStatus in ['pending_verification', 'pending_payment']
+          && request.resource.data.ticketStatus == 'none'
+          && request.resource.data.refId == refId
+          && (('receipt' in request.resource.data)
+              ? request.resource.data.receipt.data.size() <= 700000
+              : true)
+          && pendingFields();
+      }
+
+      function validForUpdate() {
+        let sub = request.resource.data.diff(resource.data).affectedKeys();
+        return sub.hasOnly(['receipt', 'whatsapp', 'source'])
+          && resource.data.paymentStatus in ['pending_verification', 'pending_payment']
+          && request.resource.data.paymentStatus == resource.data.paymentStatus
+          && request.resource.data.ticketStatus == resource.data.ticketStatus
+          && request.resource.data.ticketCode == resource.data.ticketCode
+          && request.resource.data.amount == resource.data.amount
+          && pendingFields();
+      }
+
+      allow create: if validForCreate();
+      allow get: if resource.data.refId == refId && validForUpdate();
+      allow update: if validForUpdate();
+      allow list, delete: if false;
+    }
+
+    /* ---------------------------------------------------------
+       tickets
+       Public read so the status/QR check works for attendees and
+       door staff. Only the server (Admin SDK) may create/update/
+       delete — a browser client must never write here.
+    --------------------------------------------------------- */
+    match /tickets/{code} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+  }
+}

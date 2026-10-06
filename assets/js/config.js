@@ -1,26 +1,35 @@
 /* ============================================================
    UDUF Bootcamp — site configuration
    --------------------------------------------------------
-   EDIT THIS FILE to connect the site to your backend.
-   See README.md for a step-by-step setup.
+   EDIT THIS FILE to set prices, Firebase project and channel links.
+   See README.md for the full setup.
    ============================================================ */
 
 window.UDUF = {
   /* --------------------------------------------------------
-     BACKEND ENDPOINT
+     FIREBASE (client SDK)
      --------------------------------------------------------
-     Where registrations are POSTed and tickets are verified.
+     Public web configuration — safe for the browser.
 
-     This is a Google Apps Script web-app URL. To create one:
-       1. script.google.com -> New project
-       2. Paste backend/Code.gs from this repo into Code.gs
-       3. Deploy -> New deployment -> Web app
-          - Execute as: Me
-          - Who has access: Anyone
-       4. Copy the /exec URL and paste it below.
+     PRIVILEGED setup (the service-account / admin SDK JSON) must
+     NEVER be placed in frontend files. It is used only inside the
+     serverless API (api/admin.js) via the FIREBASE_SERVICE_ACCOUNT
+     environment variable. See README.md.
+     -------------------------------------------------------- */
+  firebase: {
+    apiKey: 'AIzaSyAhN5gEdNvN-9cY5XwJodyfZ_zF11VQr2w',
+    authDomain: 'original-concert.firebaseapp.com',
+    projectId: 'original-concert',
+    storageBucket: 'original-concert.firebasestorage.app',
+    messagingSenderId: '1013926515363',
+    appId: '1:1013926515363:web:06978260900aa60fd3e516',
+  },
 
-     Leave as '' to run in offline demo mode: registrations are
-     stored only in the browser and never reach a server.
+  /* --------------------------------------------------------
+     LEGACY APPS-SCRIPT ENDPOINT
+     --------------------------------------------------------
+     Unused. The site now persists to Firebase Firestore.
+     Left empty; kept only for the old Google-Sheet backend.
      -------------------------------------------------------- */
   endpoint: '',
 
@@ -39,17 +48,60 @@ window.UDUF = {
   },
 
   /* --------------------------------------------------------
-     TICKETS
-     --------------------------------------------------------
-     Registration is free — a confirmed ticket is issued the moment
-     the form is submitted, together with a scannable QR code.
+     TICKETS (official pricing — there is NO free ticket)
      -------------------------------------------------------- */
-  ticketType: 'Individual Ticket',
+  tickets: {
+    individual: {
+      id: 'individual',
+      label: 'Individual Ticket',
+      price: 15000,
+      slots: 1,
+      perPerson: '₦15,000',
+      note: '1 participant',
+    },
+    group: {
+      id: 'group',
+      label: 'Group Ticket',
+      price: 50000,
+      slots: 5,
+      perPerson: '₦10,000 per person',
+      note: '5 participants',
+    },
+    currency: '₦',
+    format(amount) {
+      return '₦' + Number(amount || 0).toLocaleString('en-NG');
+    },
+  },
+
+  /* --------------------------------------------------------
+     PAYMENT
+     -------------------------------------------------------- */
+  payment: {
+    /* Official Selar store. Both ticket options live here. */
+    selarStore: 'https://selar.com/m/uduf-africa',
+
+    /* Manual bank payment details — do not change. */
+    bank: {
+      accountName: 'Ultimate Destiny Uplifters Foundation',
+      bank: 'Zenith Bank',
+      accountNumber: '1016991454',
+    },
+
+    /* WhatsApp verification number (digits only, as used by wa.me).
+       Leave '' until supplied, e.g. '2348012345678'. */
+    whatsappVerifyNumber: '',
+
+    /* Official WhatsApp group — only shown once payment is verified. */
+    whatsappGroup:
+      'https://chat.whatsapp.com/DKFvf9MXGKI9pOGrRZjdUc?s=cl&p=a&mlu=4&ilr=4&iam=2',
+  },
 
   /* --------------------------------------------------------
      STORAGE
-     --------------------------------------------------------
-     localStorage key for offline demo-mode registrations.
      -------------------------------------------------------- */
-  storeKey: 'uduf.registrations.v1',
+  storeKey: 'uduf.registrations.v2',
+  refPrefix: 'UDUF-REG-',
+
+  /* Legacy default ticket used by the shared renderer fallback. */
+  ticketType: 'Individual Ticket',
 };
