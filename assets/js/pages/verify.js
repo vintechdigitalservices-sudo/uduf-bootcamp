@@ -182,7 +182,7 @@
   function showRegistration(reg) {
     if (reg.paymentStatus === 'rejected') return showRejected(reg);
     if (reg.paymentStatus === 'verified' && reg.ticketStatus === 'generated') return showConfirmed(reg);
-    if (reg.paymentStatus === 'pending_verification') return showPendingVerification(reg);
+    if (reg.paymentStatus === 'pending_verification' || reg.paymentStatus === 'awaiting_verification') return showPendingVerification(reg);
     return showPendingPayment(reg);
   }
 

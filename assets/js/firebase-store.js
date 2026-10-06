@@ -6,10 +6,17 @@
    Security model:
    - Clients may CREATE registrations but only in a PENDING state.
      Firestore rules force paymentStatus to remain
-     'pending_payment' / 'pending_verification' and never allow a
+     'awaiting_verification' / 'pending_payment' and never allow a
      user to set ticketCode, ticketStatus or to approve themselves.
-   - Public ticket records live in `tickets/{code}`, written ONLY by
-     the admin SDK (api/admin.js) after verification.
+   - Payment receipts are uploaded straight to the organisation's
+     Cloudinary account (unsigned preset); only the returned
+     receiptUrl is stored here — never the file itself.
+   - Public ticket records live in `tickets/{code}`. Issue/update is
+     gated by Firestore rules to authenticated admins only (an admin
+     is any user whose UID has a record in `admins/{uid}`) — there is
+     NO serverless backend.
+   - The admin dashboard signs in with Firebase Auth (email/password)
+     and talks to Firestore directly through these rules.
    - If Firestore is unavailable (offline / CDN blocked / demo) we
      fall back to a localStorage demo mode that pages through the
      whole flow with an immediately issued ticket.
@@ -39,6 +46,76 @@
 
   function isLive() {
     return !!CFG && !!CFG.firebase && !!init();
+  }
+
+  /* ---------------- Auth (email / password) ----------------
+     Powers the admin dashboard. Sign-in requires the Email/Password
+     provider to be enabled in Firebase console. */
+
+  function initAuth() {
+    if (typeof firebase === 'undefined' || !firebase.auth) return null;
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(CFG.firebase);
+      }
+      return firebase.auth();
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async function signIn(email, password) {
+    const auth = initAuth();
+    if (!auth) return { ok: false, message: 'Firebase Auth is not available.' };
+    try {
+      const cred = await auth.signInWithEmailAndPassword(String(email || '').trim(), String(password || ''));
+      return { ok: true, user: cred.user };
+    } catch (err) {
+      let message = 'Sign-in failed.';
+      if (err && err.code) {
+        if (['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential'].indexOf(err.code) !== -1) {
+          message = 'Wrong email or password.';
+        } else if (err.code === 'auth/invalid-email') {
+          message = 'That email address does not look right.';
+        } else if (err.code === 'auth/user-disabled') {
+          message = 'This account has been disabled.';
+        } else {
+          message = err.message || message;
+        }
+      }
+      return { ok: false, message };
+    }
+  }
+
+  async function signOut() {
+    const auth = initAuth();
+    if (!auth) return;
+    try {
+      await auth.signOut();
+    } catch (err) {}
+  }
+
+  /* Subscribes to auth state. fn(userOrNull) where user has
+     { uid, email }. Returns an unsubscribe function. */
+  function onAuth(fn) {
+    const auth = initAuth();
+    if (!auth) {
+      fn(null);
+      return function () {};
+    }
+    return auth.onAuthStateChanged(function (user) {
+      fn(user ? { uid: user.uid, email: user.email || '' } : null);
+    });
+  }
+
+  function currentUser() {
+    const auth = initAuth();
+    if (!auth || !auth.currentUser) return null;
+    return { uid: auth.currentUser.uid, email: auth.currentUser.email || '' };
+  }
+
+  function firestoreRef() {
+    return isLive() ? db : null;
   }
 
   /* ---------------- Demo (localStorage) store ---------------- */
@@ -135,7 +212,7 @@
   }
 
   function guardPayments(p) {
-    const ok = ['pending_payment', 'pending_verification', 'verified', 'rejected'];
+    const ok = ['pending_payment', 'awaiting_verification', 'pending_verification', 'verified', 'rejected'];
     return ok.indexOf(p) !== -1 ? p : 'pending_payment';
   }
 
@@ -143,7 +220,9 @@
 
   /**
    * data: { ticketType, ticketLabel, amount, paymentMethod,
-   *         purchaser, participants, receipt, whatsapp }
+   *         paymentStatus, status, purchaser, participants,
+   *         receiptUrl, receiptName, amountPaid, paymentDate,
+   *         paymentSubmittedAt, whatsapp }
    * Returns { ok, refId, record } — demo mode confirms and issues.
    */
   async function createRegistration(data) {
@@ -155,12 +234,17 @@
       amount: Number(data.amount),
       paymentMethod: data.paymentMethod === 'online' ? 'online' : 'manual',
       paymentStatus: guardPayments(data.paymentStatus || 'pending_payment'),
+      status: 'pending',
       ticketStatus: 'none',
       ticketCode: '',
       ticketCodes: [],
       purchaser: data.purchaser || {},
       participants: data.participants || [],
-      receipt: data.receipt || null,
+      receiptUrl: data.receiptUrl || null,
+      receiptName: data.receiptName || null,
+      amountPaid: Number(data.amount),
+      paymentDate: data.paymentDate || null,
+      paymentSubmittedAt: data.paymentSubmittedAt || stamp(),
       whatsapp: data.whatsapp || { sent: false, at: null },
       createdAt: stamp(),
       updatedAt: stamp(),
@@ -171,6 +255,7 @@
          is issued immediately so the whole pickup flow can be tested
          offline. Production (Firestore) always waits for approval. */
       base.paymentStatus = 'verified';
+      base.status = 'approved';
       base.ticketStatus = 'generated';
       const codes = await makeTicketCodes(base.participants.length || 1);
       base.ticketCodes = codes;
@@ -193,8 +278,9 @@
   }
 
   /**
-   * Move a pending registration forward (smartContract-safe update).
-   * patch: { paymentStatus, receipt, whatsapp, updatedAt, ... }
+   * Move a PENDING registration forward (public, rules-gated).
+   * patch may carry receiptUrl / receiptName / paymentStatus
+   * (pending_payment -> awaiting_verification) / whatsapp / source.
    */
   async function updateRegistration(refId, patch) {
     if (!isLive()) {
@@ -294,5 +380,12 @@
     getTicket,
     makeTicketCodes,
     now: stamp,
+    auth: {
+      signIn,
+      signOut,
+      onAuth,
+      currentUser,
+    },
+    db: firestoreRef,
   };
 })();

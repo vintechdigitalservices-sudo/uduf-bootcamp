@@ -2291,6 +2291,16 @@ h1, h2, h3, h4 {
   background: #fff;
 }
 
+.upload__file {
+  padding: 0.95rem 1.1rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--cream);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  overflow-wrap: anywhere;
+}
+
 .upload__hint {
   font-size: 0.78rem;
   color: var(--grey-dim);

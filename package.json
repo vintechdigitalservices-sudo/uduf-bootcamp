@@ -1,9 +1,0 @@
-{
-  "name": "uduf-africa-bootcamp",
-  "version": "1.0.0",
-  "private": true,
-  "description": "UDUF Africa 2027 Bootcamp — static site with a Vercel serverless admin API (Firebase Admin SDK).",
-  "dependencies": {
-    "firebase-admin": "^13.1.0"
-  }
-}

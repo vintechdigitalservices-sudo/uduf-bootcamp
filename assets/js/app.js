@@ -546,7 +546,7 @@ function initAmbient() {}
       if (reg.paymentStatus === 'verified' && reg.ticketStatus === 'generated') {
         return { ok: true, status: 'valid', registration: reg };
       }
-      if (reg.paymentStatus === 'pending_verification') {
+      if (reg.paymentStatus === 'pending_verification' || reg.paymentStatus === 'awaiting_verification') {
         return { ok: true, status: 'pending_verification', registration: reg };
       }
       /* pending_payment (or anything else not finalised) */

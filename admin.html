@@ -44,12 +44,16 @@
 
       <!-- LOGIN -->
       <div class="form-card" id="admin-login" hidden>
-        <legend class="form-legend"><span class="form-legend__step">1</span> Admin Login</legend>
+        <legend class="form-legend"><span class="form-legend__step">1</span> Admin Sign in</legend>
+        <div class="field" data-field>
+          <label class="field__label" for="admin-email">Email</label>
+          <input class="field__input" type="email" id="admin-email" name="adminEmail" autocomplete="email"
+                 placeholder="admin@udufafrica.org" required>
+        </div>
         <div class="field" data-field>
           <label class="field__label" for="admin-password">Password</label>
           <input class="field__input" type="password" id="admin-password" name="adminPassword" autocomplete="current-password"
-                 placeholder="Enter the administrator password." required>
-          <span class="field__error" data-error></span>
+                 placeholder="Enter your password." required>
         </div>
         <div class="actions-row" style="justify-content:flex-start;margin-top:1.4rem">
           <button class="btn" type="button" id="btn-login">Sign in</button>
@@ -58,6 +62,8 @@
 
       <!-- PANEL -->
       <div id="admin-panel" hidden>
+
+        <p class="admin-stat" id="admin-account" style="margin-bottom:1rem"></p>
 
         <div class="admin-tabs">
           <button class="admin-tab is-active" type="button" data-tab="pending_verification">Pending Verification</button>
@@ -101,7 +107,11 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/firebase-store.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/pages/admin.js"></script>
 </body>

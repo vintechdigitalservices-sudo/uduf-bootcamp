@@ -3,66 +3,133 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /* An admin is any authenticated user whose UID has a document
+       in /admins/{uid}. That record is created during provisioning
+       (Firebase Admin SDK) or by an existing admin. There is no
+       serverless backend to trust — these rules are the gate. */
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    /* Admin roster — readable only by the matching account,
+       writable only by existing admins (Admin SDK bypasses rules
+       entirely, so the very first admin can be created server-side). */
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+
     /* ---------------------------------------------------------
        registrations
-       Clients may:
-         - CREATE (only while in a pending state — the shape is
-           checked so a user cannot self-approve)
-         - READ their own registration (by ID using the refId)
-         - UPDATE only from a pending state, and only the fields
-           listed below. They can never set verified / rejected,
-           ticketStatus, ticket codes, or amounts.
-       Listing is forbidden; the admin API uses the Admin SDK.
+       Public (unauthenticated) clients may:
+         - CREATE while still pending, and the submitted shape is
+           checked so nobody can self-approve, self-issue tickets,
+           or change prices.
+         - GET by ID (the long, unguessable refId).
+         - UPDATE only within a pending state: attach receipts /
+           WhatsApp / paymentDate, and mark "paid on Selar" by
+           moving pending_payment -> awaiting_verification.
+       Listing is admin-only. Approval/rejection/ticket issuance
+       is admin-only.
     --------------------------------------------------------- */
     match /registrations/{refId} {
 
       function pendingFields() {
         return request.resource.data.keys().hasOnly([
           'refId', 'purchaser', 'participants', 'ticketType',
-          'ticketLabel', 'paymentMethod', 'amount',
-          'receipt', 'whatsapp', 'source', 'createdAt',
-          'paymentStatus', 'ticketStatus', 'ticketCode',
-          'ticketCodes', 'rejectionReason', 'reviewedAt',
-          'reviewedBy'
+          'ticketLabel', 'amount', 'paymentMethod',
+          'paymentStatus', 'status',
+          'receiptUrl', 'receiptName', 'amountPaid',
+          'paymentDate', 'paymentSubmittedAt',
+          'ticketStatus', 'ticketCode', 'ticketCodes',
+          'whatsapp', 'source', 'createdAt', 'updatedAt',
+          'rejectionReason', 'reviewedAt', 'reviewedBy'
         ]);
       }
 
+      function isHttpUrl(v) {
+        return v is string && v.matches('https?://[a-zA-Z0-9._~:/?#@!$&()*+,;=%-]+');
+      }
+
       function validForCreate() {
-        return request.resource.data.paymentStatus in ['pending_verification', 'pending_payment']
+        return request.resource.data.paymentStatus in ['awaiting_verification', 'pending_payment']
+          && request.resource.data.status == 'pending'
           && request.resource.data.ticketStatus == 'none'
           && request.resource.data.refId == refId
-          && (('receipt' in request.resource.data)
-              ? request.resource.data.receipt.data.size() <= 700000
-              : true)
+          && request.resource.data.amount == request.resource.data.amountPaid
+          && (request.resource.data.paymentMethod == 'manual'
+              ? ('receiptUrl' in request.resource.data)
+                && request.resource.data.receiptUrl is string
+                && request.resource.data.receiptUrl.size() >= 1
+                && request.resource.data.receiptUrl.size() <= 400
+                && isHttpUrl(request.resource.data.receiptUrl)
+              : ('receiptUrl' in request.resource.data)
+                && request.resource.data.receiptUrl == null)
           && pendingFields();
       }
 
       function validForUpdate() {
         let sub = request.resource.data.diff(resource.data).affectedKeys();
-        return sub.hasOnly(['receipt', 'whatsapp', 'source'])
-          && resource.data.paymentStatus in ['pending_verification', 'pending_payment']
-          && request.resource.data.paymentStatus == resource.data.paymentStatus
+        return sub.hasOnly([
+            'receiptUrl', 'receiptName', 'paymentStatus',
+            'paymentDate', 'paymentSubmittedAt',
+            'whatsapp', 'source', 'updatedAt'
+          ])
+          && resource.data.paymentStatus in ['awaiting_verification', 'pending_payment', 'pending_verification']
+          && request.resource.data.paymentStatus in ['awaiting_verification', 'pending_payment', 'pending_verification']
+          && (request.resource.data.paymentStatus == resource.data.paymentStatus
+              || (resource.data.paymentStatus == 'pending_payment'
+                  && request.resource.data.paymentStatus == 'awaiting_verification'))
+          && request.resource.data.status == 'pending'
+          && resource.data.status == 'pending'
           && request.resource.data.ticketStatus == resource.data.ticketStatus
           && request.resource.data.ticketCode == resource.data.ticketCode
           && request.resource.data.amount == resource.data.amount
+          && (('receiptUrl' in request.resource.data)
+              ? request.resource.data.receiptUrl == null
+                || (request.resource.data.receiptUrl is string
+                    && request.resource.data.receiptUrl.size() <= 400
+                    && isHttpUrl(request.resource.data.receiptUrl))
+              : true)
           && pendingFields();
       }
 
       allow create: if validForCreate();
-      allow get: if resource.data.refId == refId && validForUpdate();
-      allow update: if validForUpdate();
-      allow list, delete: if false;
+      allow get: if resource.data.refId == refId;
+      allow update: if validForUpdate() || isAdmin();
+      allow list: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /* ---------------------------------------------------------
        tickets
        Public read so the status/QR check works for attendees and
-       door staff. Only the server (Admin SDK) may create/update/
-       delete — a browser client must never write here.
+       door staff. Issue, check-in and any other write are strictly
+       admin-only — a browser client can never mint a ticket.
     --------------------------------------------------------- */
     match /tickets/{code} {
+      function validTicketFields() {
+        return request.resource.data.keys().hasOnly([
+          'code', 'refId', 'fullName', 'ticketType',
+          'ticketLabel', 'status', 'createdAt',
+          'checkedInAt', 'updatedAt'
+        ])
+          && request.resource.data.code == code
+          && request.resource.data.status in ['valid', 'checked_in']
+          && request.resource.data.refId is string;
+      }
+
       allow read: if true;
-      allow create, update, delete: if false;
+      allow create: if isAdmin() && validTicketFields();
+      allow update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['status', 'checkedInAt', 'updatedAt'])
+        && request.resource.data.status in ['valid', 'checked_in'];
+      allow delete: if isAdmin();
     }
   }
 }

@@ -12,9 +12,11 @@ window.UDUF = {
      Public web configuration — safe for the browser.
 
      PRIVILEGED setup (the service-account / admin SDK JSON) must
-     NEVER be placed in frontend files. It is used only inside the
-     serverless API (api/admin.js) via the FIREBASE_SERVICE_ACCOUNT
-     environment variable. See README.md.
+     NEVER be placed in frontend files or committed to git. It is
+     used only for one-off provisioning (e.g. creating the admin
+     sign-in user) from a machine you trust. The admin dashboard
+     itself signs in with Firebase Auth (email/password) and uses
+     Firestore directly — there is no serverless backend.
      -------------------------------------------------------- */
   firebase: {
     apiKey: 'AIzaSyAhN5gEdNvN-9cY5XwJodyfZ_zF11VQr2w',
@@ -85,6 +87,15 @@ window.UDUF = {
       accountName: 'Ultimate Destiny Uplifters Foundation',
       bank: 'Zenith Bank',
       accountNumber: '1016991454',
+    },
+
+    /* Payment receipts are uploaded to the organisation's existing
+       Cloudinary account (unsigned preset). Only the returned
+       receiptUrl is stored in Firestore — never the file itself. */
+    cloudinary: {
+      cloudName: 'dt5s5zbjy',
+      uploadPreset: 'UNDER45CEOs_registration_portal',
+      maxBytes: 20 * 1024 * 1024, // 20 MB
     },
 
     /* WhatsApp verification number (digits only, as used by wa.me).

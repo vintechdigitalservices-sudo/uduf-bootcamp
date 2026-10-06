@@ -336,13 +336,14 @@
       </div>
 
       <div class="upload" id="receipt-upload">
-        <input type="file" id="receipt-file" accept="image/*" hidden>
+        <input type="file" id="receipt-file" accept="image/jpeg,image/png,application/pdf,.pdf" hidden>
         <button type="button" class="upload__drop" data-pick>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-          <span><b>Upload payment receipt</b> (photo or screenshot)</span>
+          <span><b>Upload payment receipt</b> (JPG, PNG or PDF, up to 20 MB)</span>
         </button>
         <div class="upload__preview" data-preview hidden>
-          <img alt="Receipt preview">
+          <img alt="Receipt preview" data-img>
+          <p class="upload__file" data-file hidden></p>
           <button type="button" class="btn btn--sm btn--ghost" data-remove>Remove</button>
         </div>
         <p class="upload__hint" data-upload-state>No receipt added yet — required for verification.</p>
@@ -398,84 +399,132 @@
     ta.remove();
   }
 
-  /* ---------------- Receipt ---------------- */
+  /* ---------------- Receipt upload (Cloudinary) ----------------
+     Receipt files go to the organisation's existing Cloudinary
+     account. Only the returned secure URL is saved to Firestore
+     (receiptUrl), so documents stay small and PDFs work too. */
 
-  const receiptState = { file: null, name: null, data: null, size: 0, mime: 'image/jpeg' };
+  const receiptState = { file: null, name: null, url: null };
+
+  const RECEIPT_KINDS = {
+    'image/jpeg': 'image',
+    'image/jpg': 'image',
+    'image/png': 'image',
+    'image/pdf': 'pdf',
+    'application/pdf': 'pdf',
+  };
+
+  function receiptKind(file) {
+    const kind = RECEIPT_KINDS[file.type];
+    if (kind) return kind;
+    const name = String(file.name || '').toLowerCase();
+    if (/\.pdf$/.test(name)) return 'pdf';
+    if (/\.(jpe?g|png)$/.test(name)) return 'image';
+    return null;
+  }
+
+  function validateReceiptFile(file) {
+    if (!file) return 'Please choose a receipt file.';
+    if (!receiptKind(file)) return 'Receipts must be JPG, PNG or PDF files.';
+    const max = (CFG.payment.cloudinary && CFG.payment.cloudinary.maxBytes) || 20 * 1024 * 1024;
+    if (file.size > max) {
+      return `That file is too big — receipts must be ${Math.round(max / 1024 / 1024)} MB or smaller.`;
+    }
+    return '';
+  }
+
+  function uploadToCloudinary(file) {
+    const cfg = CFG.payment.cloudinary;
+    if (!cfg || !cfg.cloudName || !cfg.uploadPreset) {
+      return Promise.reject(new Error('Cloudinary upload is not configured on this site.'));
+    }
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', cfg.uploadPreset);
+    return fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cfg.cloudName)}/auto/upload`, {
+      method: 'POST',
+      body: fd,
+    })
+      .then((res) => res.json().catch(() => null))
+      .then((data) => {
+        if (!data || data.error || !(data.secure_url || data.url)) {
+          const msg = (data && data.error && data.error.message) || 'The upload service rejected this file.';
+          throw new Error(msg);
+        }
+        return data.secure_url || data.url;
+      });
+  }
 
   function pickReceipt(e, host) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    if (!/^image\//.test(file.type)) {
-      U.toast('Please upload an image of your receipt.', 'error');
+    const error = validateReceiptFile(file);
+    if (error) {
+      U.toast(error, 'error');
+      e.target.value = '';
       return;
     }
-    compressImage(file)
-      .then((out) => {
-        receiptState.file = out.name;
-        receiptState.data = out.dataUrl;
-        receiptState.size = out.bytes;
-        receiptState.mime = out.mime;
 
-        const preview = $('[data-preview]', host);
-        const img = preview.querySelector('img');
-        const drop = $('[data-pick]', host);
-        const state = $('[data-upload-state]', host);
-        img.src = out.dataUrl;
-        drop.hidden = true;
-        preview.hidden = false;
-        if (state) state.textContent = `Receipt added: ${out.name} (${Math.max(1, Math.round(out.bytes / 1024))} KB)`;
-        U.toast('Receipt attached.', 'ok');
-      })
-      .catch(() => U.toast('Could not read that image. Try a different file.', 'error'));
+    receiptState.file = file;
+    receiptState.name = file.name;
+    const kind = receiptKind(file);
+
+    const preview = $('[data-preview]', host);
+    const img = $('[data-img]', host);
+    const fileChip = $('[data-file]', host);
+    const drop = $('[data-pick]', host);
+    const state = $('[data-upload-state]', host);
+
+    drop.hidden = true;
+    preview.hidden = false;
+
+    if (kind === 'pdf') {
+      if (img) {
+        img.hidden = true;
+        if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src);
+        img.removeAttribute('src');
+      }
+      if (fileChip) {
+        fileChip.hidden = false;
+        fileChip.textContent = `PDF receipt: ${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
+      }
+    } else {
+      if (fileChip) fileChip.hidden = true;
+      if (img) {
+        img.hidden = false;
+        img.src = URL.createObjectURL(file);
+      }
+    }
+
+    if (state) state.textContent = `Receipt selected: ${file.name} — it will be uploaded when you submit.`;
+    U.toast('Receipt selected.', 'ok');
   }
 
   function clearReceipt(host) {
     receiptState.file = null;
-    receiptState.data = null;
-    receiptState.size = 0;
+    receiptState.name = null;
+    receiptState.url = null;
+
     const preview = $('[data-preview]', host);
+    const img = preview ? $('[data-img]', preview) : null;
+    const fileChip = preview ? $('[data-file]', preview) : null;
     const drop = $('[data-pick]', host);
     const state = $('[data-upload-state]', host);
     const input = $('#receipt-file', host);
-    preview.hidden = true;
-    drop.hidden = false;
+
+    if (preview) preview.hidden = true;
+    if (drop) drop.hidden = false;
+    if (img) {
+      img.hidden = false;
+      if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src);
+      img.removeAttribute('src');
+    }
+    if (fileChip) {
+      fileChip.hidden = true;
+      fileChip.textContent = '';
+    }
     if (state) state.textContent = 'No receipt added yet — required for verification.';
     if (input) input.value = '';
-  }
-
-  function compressImage(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error('read'));
-      reader.onload = () => {
-        const img = new Image();
-        img.onerror = () => reject(new Error('img'));
-        img.onload = () => {
-          const MAX = 1200;
-          let w = img.width;
-          let h = img.height;
-          const scale = Math.min(1, MAX / Math.max(w, h));
-          w = Math.max(1, Math.round(w * scale));
-          h = Math.max(1, Math.round(h * scale));
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-          const bytes = Math.round(((dataUrl.length - 'data:image/jpeg;base64,'.length) * 3) / 4);
-          if (bytes > 800 * 1024) {
-            reject(new Error('large'));
-            return;
-          }
-          resolve({ name: file.name, mime: 'image/jpeg', dataUrl, bytes });
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
   }
 
   function sendViaWhatsApp() {
@@ -514,43 +563,59 @@
     }
   }
 
-  function buildPayload(paymentStatus) {
+  function buildPayload(paymentStatus, receiptUrl, receiptName) {
     const d = collectDetails();
     const tk = CFG.tickets[sel.ticketType];
+    const submittedAt = new Date().toISOString();
     return {
       ticketType: sel.ticketType,
       ticketLabel: tk.label,
       amount: tk.price,
       paymentMethod: sel.method,
       paymentStatus,
+      status: 'pending',
       purchaser: d.purchaser,
       participants: d.participants,
-      receipt: receiptState.data ? { name: receiptState.file, mime: receiptState.mime, size: receiptState.size, data: receiptState.data } : null,
+      receiptUrl: receiptUrl || null,
+      receiptName: receiptName || null,
+      amountPaid: tk.price,
+      paymentDate: submittedAt.slice(0, 10),
+      paymentSubmittedAt: submittedAt,
       whatsapp: { sent: false, at: null },
     };
   }
 
   async function submitManual() {
     const btn = $('#btn-manual-submit', paymentHost);
-    if (!receiptState.data) {
-      U.toast('Please upload your payment receipt before submitting.', 'error');
+    if (!receiptState.file) {
+      U.toast('Please choose your payment receipt before submitting.', 'error');
+      return;
+    }
+
+    setBusy(btn, true, 'Uploading receipt…');
+    let receiptUrl = null;
+    try {
+      receiptUrl = await uploadToCloudinary(receiptState.file);
+    } catch (err) {
+      U.toast((err && err.message) || 'Receipt upload failed. Please try again.', 'error');
+      setBusy(btn, false, 'Submit for Verification');
       return;
     }
 
     setBusy(btn, true, 'Saving registration…');
     try {
-      const res = await Fire.createRegistration(buildPayload('pending_verification'));
+      const res = await Fire.createRegistration(buildPayload('awaiting_verification', receiptUrl, receiptState.name));
       if (!res.ok) throw new Error(res.message || 'Could not save your registration.');
       sel.refId = res.refId;
       sel.registration = res.record;
       if (res.record && res.record.ticketStatus === 'generated') {
         renderConfirmed(res.record);
       } else {
-        renderPending(res.record || { refId: res.refId, paymentStatus: 'pending_verification' });
+        renderPending(res.record || { refId: res.refId, paymentStatus: 'awaiting_verification' });
       }
     } catch (err) {
       U.toast(err.message || 'Something went wrong. Please try again.', 'error');
-      setBusy(btn, false);
+      setBusy(btn, false, 'Submit for Verification');
     }
   }
 
@@ -605,14 +670,16 @@
     $('#btn-selar-done', host).addEventListener('click', async (e) => {
       const el = e.currentTarget;
       setBusy(el, true, 'Submitting for verification…');
-      const res = await Fire.updateRegistration(reg.refId, { paymentStatus: 'pending_verification' });
+      const res = await Fire.updateRegistration(reg.refId, { paymentStatus: 'awaiting_verification' });
       if (!res.ok) {
         U.toast(res.message || 'Could not update your registration.', 'error');
         setBusy(el, false, 'I have completed payment on Selar');
         return;
       }
-      renderPending({ refId: reg.refId, paymentStatus: 'pending_verification' });
+      renderPending({ refId: reg.refId, paymentStatus: 'awaiting_verification' });
     });
+
+    go('selar');
   }
 
   function copyRefId(refId) {
@@ -764,7 +831,11 @@
     if (!t) return;
     e.preventDefault();
     const target = t.getAttribute('data-go');
-    if (target === 'method' && !validateTicket()) return;
+    if (target === 'method') {
+      if (!validateTicket()) return;
+      go('method');
+      return;
+    }
     if (target === 'details') return gotoDetails();
     if (target === 'payment') return gotoPayment();
     if (t.hasAttribute('data-back')) {
