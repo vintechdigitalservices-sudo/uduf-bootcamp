@@ -454,11 +454,24 @@ h1, h2, h3, h4 {
 
 .hero__inner { position: relative; z-index: 1; }
 
+/* tiny line above the theme: the event context */
+.hero__eyebrow {
+  font-family: var(--font-display);
+  font-size: clamp(0.7rem, 1.5vw, 0.92rem);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: clamp(0.9rem, 2.4vw, 1.4rem);
+}
+
+/* the theme — YOUR IDEA. YOUR BUSINESS. YOUR LEGACY. — is typed here */
 .hero__title {
-  font-size: clamp(2.3rem, 7.4vw, 5.4rem);
-  line-height: 1.02;
-  margin: 0 0 1.4rem;
+  font-size: clamp(2.1rem, 6.4vw, 4.8rem);
+  line-height: 1.06;
+  margin: 0 0 1.5rem;
   letter-spacing: 0.005em;
+  max-width: 14ch;
 }
 
 /* ---------- Typing animation ---------- */
@@ -488,6 +501,7 @@ h1, h2, h3, h4 {
 }
 
 /* secondary hero furniture waits until the typing has finished */
+.hero__eyebrow,
 .hero__sub,
 .hero__note,
 .countdown,
@@ -496,6 +510,7 @@ h1, h2, h3, h4 {
   opacity: 0;
 }
 
+.hero__inner.is-typed .hero__eyebrow,
 .hero__inner.is-typed .hero__sub,
 .hero__inner.is-typed .hero__note,
 .hero__inner.is-typed .countdown,
@@ -504,18 +519,19 @@ h1, h2, h3, h4 {
   animation: rise 0.8s var(--ease-out) forwards;
 }
 
-.hero__inner.is-typed .hero__sub     { animation-delay: 0s; }
-.hero__inner.is-typed .hero__note    { animation-delay: 0.1s; }
-.hero__inner.is-typed .countdown     { animation-delay: 0.2s; }
-.hero__inner.is-typed .hero__meta    { animation-delay: 0.3s; }
-.hero__inner.is-typed .hero__actions { animation-delay: 0.4s; }
+.hero__inner.is-typed .hero__eyebrow { animation-delay: 0s; }
+.hero__inner.is-typed .hero__sub     { animation-delay: 0.1s; }
+.hero__inner.is-typed .hero__note    { animation-delay: 0.2s; }
+.hero__inner.is-typed .countdown     { animation-delay: 0.3s; }
+.hero__inner.is-typed .hero__meta    { animation-delay: 0.4s; }
+.hero__inner.is-typed .hero__actions { animation-delay: 0.5s; }
 
-/* small subtext */
+/* the hero sub — the event line under the theme */
 .hero__sub {
   font-family: var(--font-display);
-  font-size: clamp(0.95rem, 2.1vw, 1.28rem);
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--cream);
   margin-bottom: 0.5rem;
@@ -1895,6 +1911,7 @@ h1, h2, h3, h4 {
   .detail,
   .audience__item,
   .day__list li,
+  .hero__eyebrow,
   .hero__sub,
   .hero__note,
   .countdown,
