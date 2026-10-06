@@ -859,6 +859,15 @@ h1, h2, h3, h4 {
 }
 
 
+/* Generic centred row of buttons, for pages outside the hero */
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
 /* ============================================================
    Ticket pass (register + verify)
    ============================================================ */

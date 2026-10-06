@@ -31,6 +31,27 @@ python -m http.server 8000
 Opening `index.html` directly with `file://` also previews fine, but the
 backend requires `http(s)`.
 
+## Deploying to Vercel
+
+This is a plain static site — there is no build step. The rules that make it
+resolve on Vercel are in `vercel.json` at the repo root:
+
+- `outputDirectory: "."` — serve the repo root as-is, so `/` finds `index.html`.
+- `cleanUrls: true` — `/register` works as well as `/register.html`.
+- Explicit rewrites for `/register` and `/verify` (and their trailing-slash
+  forms).
+- Long `Cache-Control` on `assets/` and `public/`.
+
+When you add the project in Vercel, keep the default root directory and
+Framework Preset, or choose **Other**. If you previously created the project
+with a different **Root Directory** (e.g. `public` or `dist`), Vercel will 404
+— point it back at the repository root and redeploy.
+
+```bash
+npx vercel       # first deploy
+npx vercel --prod
+```
+
 ---
 
 ## 1. Point the site at your backend
