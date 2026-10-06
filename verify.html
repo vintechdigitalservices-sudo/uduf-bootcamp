@@ -2,69 +2,80 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Verify ticket — UDUF Africa 2027 Bootcamp</title>
-<meta name="description" content="Enter a ticket code to verify a UDUF Africa 2027 Bootcamp registration and check the attendee in.">
-<meta name="theme-color" content="#FFFFFF">
-<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify Ticket — UDUF Africa 2027 Bootcamp</title>
+<meta name="description" content="Enter your unique ticket code to verify your registration for the 2027 Active Leadership &amp; Entrepreneurship Bootcamp.">
+<meta name="theme-color" content="#0A0A0C">
 
-<link rel="icon" href="public/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="public/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="public/favicon-32.png" sizes="32x32">
+<link rel="icon" href="public/favicon-64.png" sizes="64x64">
 <link rel="apple-touch-icon" href="public/apple-touch-icon.png">
+<link rel="manifest" href="public/manifest.webmanifest">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/main.css">
 </head>
 
-<body data-page="verify" data-variant="solid">
+<body>
+
 <a class="skip-link" href="#main">Skip to content</a>
 
-<div data-component="header"></div>
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__grain"></div>
+</div>
+
+<header class="header" data-header></header>
 
 <main id="main">
 
-  <section class="phead">
-    <div class="wrap">
-      <div class="phead__grid">
-        <div>
-          <p class="eyebrow" data-reveal="left">Event entrance</p>
-          <h1 class="display display--xxl phead__title" data-reveal="type">VERIFY<br>TICKET</h1>
-        </div>
-        <div>
-          <p class="phead__sub" data-reveal="up">
-            Enter the ticket code to verify registration.
-          </p>
-        </div>
-      </div>
+  <section class="page-head">
+    <div class="shell">
+      <p class="eyebrow eyebrow--center">Verification</p>
+      <h1>Verify <span class="accent">Ticket</span></h1>
+      <p class="lede">Enter your unique ticket code to verify your registration.</p>
     </div>
   </section>
 
-  <section class="section" style="border-top:0">
-    <div class="wrap">
-      <div class="verify">
-        <div data-verify-form data-reveal="up"></div>
-        <div data-verify-result></div>
-      </div>
+  <section class="section section--tight" style="padding-top:0">
+    <div class="shell verify-box">
+
+      <form id="verify-form" novalidate>
+        <div class="field" data-field>
+          <label class="field__label" for="code">Ticket Code</label>
+          <div class="verify-form">
+            <input class="field__input code-input" type="text" id="code" name="code"
+                   placeholder="UDUF-0000-0000" autocomplete="off" autocapitalize="characters"
+                   spellcheck="false" required>
+            <button class="btn" type="submit" id="verify-btn">
+              <span data-btn-label>Verify Ticket</span>
+            </button>
+          </div>
+          <span class="field__error" data-error></span>
+        </div>
+      </form>
+
+      <!-- result states are injected by verify.js -->
+      <div id="result" role="status" aria-live="polite"></div>
+
     </div>
   </section>
 
 </main>
 
-<div data-component="footer"></div>
+<footer class="footer" data-footer></footer>
 
-<script src="assets/js/config.js" defer></script>
-<script src="assets/js/utils.js" defer></script>
-<script src="assets/js/data/store.js" defer></script>
-<script src="assets/js/components/icons.js" defer></script>
-<script src="assets/js/components/toast.js" defer></script>
-<script src="assets/js/components/page-transition.js" defer></script>
-<script src="assets/js/components/reveal.js" defer></script>
-<script src="assets/js/components/header.js" defer></script>
-<script src="assets/js/components/footer.js" defer></script>
-<script src="assets/js/components/loading.js" defer></script>
-<script src="assets/js/components/verification.js" defer></script>
-<script src="assets/js/pages/verify.js" defer></script>
-<script src="assets/js/app.js" defer></script>
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <div class="loader__ring"></div>
+    <p class="loader__text">Loading</p>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/qr.js"></script>
+<script src="assets/js/pages/verify.js"></script>
 </body>
 </html>

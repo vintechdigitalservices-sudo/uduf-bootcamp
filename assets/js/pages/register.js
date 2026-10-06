@@ -1,250 +1,196 @@
-/* =========================================================
-   UDUF AFRICA — Register page
+/* ============================================================
+   Register page — issues a confirmed ticket immediately.
+   No payment step: submit the form, get the ticket + QR code.
+   ============================================================ */
 
-   Submitting does the whole job in one pass:
-     validate -> reserve a unique code -> store the record ->
-     render the ticket + QR -> offer the PDF
-
-   There is no payment step. A ticket is issued the moment the form
-   is completed, and the record is stored with paymentStatus
-   "pending". If DATA.endpoints.checkout is ever set, that call is
-   made first and the record is then marked confirmed — the rest of
-   the flow is identical either way.
-   ========================================================= */
-(function (global) {
+(function () {
   'use strict';
 
-  var Uduf = global.Uduf = global.Uduf || {};
-  var U = Uduf.util;
+  const U = window.UDUFUtil;
+  if (!U) return;
 
-  var form = null;
-  var resultHost = null;
-  var wrapHost = null;
-  var lastRecord = null;
+  const CFG = window.UDUF;
+  const form = document.getElementById('register-form');
+  if (!form) return;
 
-  /* ---------- Price panel ----------
-     Reads the featured tier from config, so the badge and the
-     selection cards can never drift apart. */
-  function priceMarkup() {
-    var cfg = Uduf.config;
-    var ticket = cfg.TICKETS.filter(function (t) { return t.featured; })[0] || cfg.TICKETS[0];
-    if (!ticket) return '';
-    return '' +
-      '<div class="price">' +
-        '<p class="price__k">' + U.esc(ticket.name) + ' Ticket</p>' +
-        '<p class="price__v">' + U.money(ticket.price) + '<small>per person</small></p>' +
-      '</div>';
-  }
+  const btn = document.getElementById('submit-btn');
+  const btnLabel = $('[data-btn-label]', btn);
+  const result = document.getElementById('register-result');
+  const fieldsets = U.$$('.form-group', form);
 
-  /* ---------- Sidebar ---------- */
-  function sideMarkup() {
-    var e = Uduf.config.EVENT;
+  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
 
-    var blocks = [
-      {
-        title: 'What&rsquo;s included',
-        items: [
-          'Both full days, all sessions',
-          'Panels, Q&amp;A and practical exercises',
-          'Your 30/60/90-day action plan',
-          'Printable and downloadable ticket'
-        ]
-      },
-      {
-        title: 'Your ticket',
-        items: [
-          'Unique code, e.g. ' + e.ticketPrefix + '-9X2K7P',
-          'Scannable QR code',
-          'Issued the moment you finish'
-        ]
-      }
-    ];
+  /* ---------------- Validation ---------------- */
 
-    var help = blocks.map(function (b) {
-      return '' +
-        '<div class="aside__block">' +
-          '<h3>' + b.title + '</h3>' +
-          '<ul>' + b.items.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
-        '</div>';
-    }).join('');
-
-    var contact = '' +
-      '<div class="aside__block">' +
-        '<h3>Need help?</h3>' +
-        '<ul>' +
-          '<li><a class="hl" href="mailto:' + e.email + '">' + U.esc(e.email) + '</a></li>' +
-          e.phones.map(function (p) {
-            return '<li><a class="hl" href="tel:' + p.replace(/[^\d]/g, '') + '">' + U.esc(p) + '</a></li>';
-          }).join('') +
-        '</ul>' +
-      '</div>';
-
-    return help + contact;
-  }
-
-  function decorateFacts() {
-    var e = Uduf.config.EVENT;
-    var map = {
-      dates: ['calendar', e.dates],
-      venue: ['pin', e.venue],
-      seats: ['users', e.capacity]
-    };
-    Object.keys(map).forEach(function (key) {
-      var node = U.qs('[data-fact="' + key + '"]');
-      if (!node) return;
-      node.innerHTML = Uduf.icons.icon(map[key][0], 'icon') + '<span>' + U.esc(map[key][1]) + '</span>';
-    });
-  }
-
-  /* ---------- Payment ----------
-     Only reached when a real checkout endpoint is configured. */
-  function takePayment(record) {
-    var endpoint = Uduf.config.DATA.endpoints.checkout;
-
-    return global.fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketCode: record.ticketCode, email: record.email })
-    }).then(function (res) {
-      if (!res.ok) throw new Error('Checkout failed (' + res.status + ')');
-      return res.json();
-    }).then(function (data) {
-      return { ref: data.reference || data.ref || record.ticketCode, live: true };
-    });
-  }
-
-  function checkoutConfigured() {
-    return !!(Uduf.config.DATA.endpoints && Uduf.config.DATA.endpoints.checkout);
-  }
-
-  /* ---------- Confirmation ---------- */
-  function showConfirmation(record, live) {
-    wrapHost.style.display = '';
-
-    var banner =
-      '<div class="confirm__banner">' +
-        Uduf.icons.icon('checkCircle', 'icon') +
-        '<span class="confirm__bannertxt">' +
-          '<strong>You&rsquo;re registered</strong>' +
-          '<span>' + (live
-            ? 'Payment confirmed. Your ticket is ready.'
-            : 'Your ticket is ready \u2014 it was issued the moment you finished.') +
-          '</span>' +
-        '</span>' +
-      '</div>';
-
-    resultHost.innerHTML = '<div class="confirm">' + banner + '</div>';
-    resultHost.classList.add('pop');
-
-    var ticket = Uduf.Ticket.render(record, {
-      actions: true,
-      onDownload: function () { download(record); }
-    });
-    resultHost.appendChild(ticket);
-
-    var again = Uduf.Button.create({
-      label: 'Register someone else',
-      variant: 'ghost',
-      onClick: function () { global.location.reload(); }
-    });
-    var wrapAgain = U.el('div', { style: { display: 'flex', gap: '.5rem', flexWrap: 'wrap' } });
-    wrapAgain.appendChild(again);
-    wrapAgain.appendChild(Uduf.Button.create({
-      label: 'Verify this ticket',
-      variant: 'ghost',
-      href: 'verify.html?code=' + encodeURIComponent(record.ticketCode)
-    }));
-    resultHost.querySelector('.confirm').appendChild(wrapAgain);
-
-    resultHost.scrollIntoView({
-      block: 'start',
-      behavior: U.prefersReducedMotion() ? 'auto' : 'smooth'
-    });
-  }
-
-  function download(record) {
-    try {
-      Uduf.Ticket.downloadPDF(record);
-      Uduf.notify.ok('Ticket PDF downloaded.');
-    } catch (e) {
-      Uduf.notify.error('Could not build the PDF. Try printing instead.');
-    }
-  }
-
-  /* ---------- Submit ---------- */
-  function onValid(payload, refs) {
-    Uduf.buttonLoading.set(refs.submit, true, 'Processing\u2026');
-    if (resultHost) resultHost.innerHTML = '';
-
-    Uduf.db.createRegistration(payload)
-      .then(function (record) {
-        lastRecord = record;
-        /* No checkout configured: the ticket is issued immediately. */
-        if (!checkoutConfigured()) return null;
-        return takePayment(record)
-          .then(function (pay) {
-            return Uduf.db.markConfirmed(record.ticketCode, pay.ref);
-          });
-      })
-      .then(function (confirmed) {
-        if (confirmed) lastRecord = confirmed;
-        /* The form has done its job — take it out of the page. */
-        var section = form && form.host && form.host.closest('section');
-        if (section) section.style.display = 'none';
-        showConfirmation(lastRecord, !!confirmed);
-        Uduf.notify.ok('Ticket ' + lastRecord.ticketCode + ' issued.');
-      })
-      .catch(function (err) {
-        if (global.console) console.error('[UDUF] registration failed:', err);
-        Uduf.buttonLoading.set(refs.submit, false);
-        Uduf.notify.error('Registration failed. Please try again.');
-      });
-  }
-
-  /* ---------- Restore from ?code= ---------- */
-  function restore() {
-    var m = /[?&]code=([^&]+)/.exec(global.location.search);
-    if (!m) return Promise.resolve(false);
-    var code = U.normaliseTicketCode(decodeURIComponent(m[1]));
-    if (!U.RULES.ticketCode(code)) return Promise.resolve(false);
-
-    var section = U.qs('[data-reg-host]').closest('section');
-    if (section) section.style.display = 'none';
-
-    return Uduf.db.findByCode(code).then(function (r) {
-      if (!r) {
-        if (section) section.style.display = '';
-        Uduf.notify.error('We could not find ticket ' + code + '.');
-        return false;
-      }
-      showConfirmation(r, true);
-      return true;
-    });
-  }
-
-  Uduf.pages = Uduf.pages || {};
-
-  Uduf.pages.register = {
-    init: function () {
-      decorateFacts();
-
-      var price = U.qs('[data-reg-price]');
-      if (price) price.innerHTML = priceMarkup();
-
-      var side = U.qs('[data-reg-side]');
-      if (side) side.innerHTML = sideMarkup();
-
-      form = Uduf.RegistrationForm.init('[data-reg-host]');
-      resultHost = U.qs('[data-reg-confirm]');
-      wrapHost = U.qs('[data-reg-confirm-wrap]');
-
-      this.onValid = onValid;
+  const RULES = {
+    fullName: (v) => {
+      if (!v.trim()) return 'Please enter your full name.';
+      if (v.trim().length < 3) return 'That name looks too short.';
+      return '';
     },
-
-    afterMount: function () {
-      restore();
+    phone: (v) => {
+      const digits = v.replace(/\D/g, '');
+      if (!digits) return 'Please enter your phone number.';
+      if (digits.length < 10) return 'Please enter a valid phone number.';
+      return '';
     },
-
-    onValid: onValid
+    email: (v) => {
+      if (!v.trim()) return 'Please enter your email address.';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim())) return 'That email address does not look right.';
+      return '';
+    },
+    age: (v) => {
+      if (!v.trim()) return 'Please enter your age.';
+      const n = Number(v);
+      if (!Number.isFinite(n)) return 'Please enter your age as a number.';
+      if (n < 16 || n > 100) return 'Age must be between 16 and 100.';
+      return '';
+    },
+    address: (v) => (v.trim() ? '' : 'Please enter your address.'),
   };
-})(window);
+
+  function setFieldState(input, message) {
+    const wrap = input.closest('[data-field]');
+    if (!wrap) return;
+    const error = $('[data-error]', wrap);
+    wrap.classList.toggle('has-error', !!message);
+    input.setAttribute('aria-invalid', message ? 'true' : 'false');
+    if (error) error.textContent = message;
+  }
+
+  function validateField(input) {
+    const rule = RULES[input.name];
+    const message = rule ? rule(input.value) : '';
+    setFieldState(input, message);
+    return !message;
+  }
+
+  function validateAll(showFirst) {
+    let ok = true;
+    let firstBad = null;
+
+    U.$$('[required]', form).forEach((input) => {
+      if (input.type === 'hidden') return;
+      const valid = validateField(input);
+      if (!valid && !firstBad) firstBad = input;
+      if (!valid) ok = false;
+    });
+
+    if (showFirst && firstBad) {
+      firstBad.focus();
+      if (firstBad.scrollIntoView) firstBad.scrollIntoView({ block: 'center', behavior: U.reduceMotion ? 'auto' : 'smooth' });
+    }
+    return ok;
+  }
+
+  /* Live validation once a field has been touched. */
+  form.addEventListener(
+    'blur',
+    (e) => {
+      const input = e.target;
+      if (input && RULES[input.name]) validateField(input);
+    },
+    true
+  );
+
+  form.addEventListener('input', (e) => {
+    const input = e.target;
+    if (!input || !RULES[input.name]) return;
+    const wrap = input.closest('[data-field]');
+    if (wrap && wrap.classList.contains('is-invalid')) validateField(input);
+  });
+
+  /* ---------------- Step markers ---------------- */
+
+  function markFieldsets(valid) {
+    fieldsets.forEach((fs, i) => {
+      const step = $('.form-legend__step', fs);
+      if (!step) return;
+      const complete = valid || fs.classList.contains('is-complete');
+      if (complete && !valid) fs.classList.add('is-complete');
+      if (valid) step.textContent = '✓';
+      else if (complete) step.textContent = String(i + 1);
+    });
+  }
+
+  /* ---------------- Submit ---------------- */
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!validateAll(true)) {
+      U.toast('Please correct the highlighted fields.', 'error');
+      return;
+    }
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    const ticket = {
+      ...data,
+      fullName: String(data.fullName || '').trim(),
+      email: String(data.email || '').trim().toLowerCase(),
+      ticketType: data.ticketType || CFG.ticketType,
+      ticketPrice: 0,
+      status: 'confirmed',
+    };
+
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    if (btnLabel) btnLabel.textContent = 'Issuing your ticket…';
+
+    try {
+      const saved = await U.registerTicket(ticket);
+
+      if (!saved.ok) {
+        throw new Error(saved.message || 'We could not issue your ticket. Please try again.');
+      }
+
+      showTicket(saved.ticket);
+    } catch (err) {
+      U.toast(err.message || 'Something went wrong. Please try again.', 'error');
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+      if (btnLabel) btnLabel.textContent = 'Get My Ticket';
+    }
+  });
+
+  /* ---------------- Ticket display ---------------- */
+
+  function showTicket(ticket) {
+    form.hidden = true;
+    markFieldsets(true);
+
+    const code = String(ticket.code || '').toUpperCase();
+    const offline = U.isOfflineMode();
+
+    result.hidden = false;
+    result.className = 'result result--valid';
+    result.innerHTML = `
+      <div class="result__head">
+        <p class="result__eyebrow">Registration confirmed</p>
+        <h2 class="result__title">You are in${U.escapeHtml(ticket.fullName ? ', ' + ticket.fullName.split(' ')[0] : '')}.</h2>
+        <p class="result__lede">Bring this ticket — and a way to scan it — to the door.</p>
+      </div>
+      <div class="result__body">
+        <div data-pass></div>
+        <div class="pass__foot">
+          <a class="btn btn--sm" href="verify.html?code=${encodeURIComponent(code)}">Verify this ticket</a>
+          <button class="btn btn--sm btn--ghost" type="button" data-print>Print / Save PDF</button>
+        </div>
+        ${
+          offline
+            ? `<p class="form-note">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5M12 7.8v.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                <span>Demo mode: this ticket is saved in this browser only. Set <code>endpoint</code> in <code>assets/js/config.js</code> to issue real tickets.</span>
+              </p>`
+            : ''
+        }
+      </div>`;
+
+    U.renderPass($('[data-pass]', result), ticket);
+
+    const printBtn = $('[data-print]', result);
+    if (printBtn) printBtn.addEventListener('click', () => window.print());
+
+    if (result.scrollIntoView) result.scrollIntoView({ behavior: U.reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+})();

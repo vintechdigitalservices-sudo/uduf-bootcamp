@@ -1,169 +1,170 @@
 # UDUF Africa — 2027 Active Leadership & Entrepreneurship Bootcamp
 
-A four-page event site: home, about, registration with ticket generation, and a
-staff-facing ticket verification desk. Plain HTML, CSS and JavaScript — no build
-step, no framework, no runtime dependencies.
+Three-page static site: home, registration and ticket verification.
+
+**Registration is free.** Submitting the form issues a confirmed ticket and a
+scannable QR code immediately — there is no payment step.
 
 ```
-index.html        Home: hero, snapshot, experience, why attend, CTA
-about.html        About the bootcamp
-register.html     3-step registration -> payment -> ticket (on-screen + PDF)
-verify.html       Staff tool: look up a code, check an attendee in
+index.html        Home (typing hero)
+register.html     Registration — ticket + QR issued on submit
+verify.html       Ticket verification — shows the ticket again with its QR
 
-assets/css/main.css                    Design system + every component
-assets/js/config.js                    Event data, ticket prices, backends
-assets/js/utils.js                     DOM, formatting, validation, codes
-assets/js/app.js                       Bootstraps the shared components
-assets/js/components/*.js              Header, footer, icons, motion, ticket, PDF
-assets/js/data/store.js                Data layer (localStorage | Firestore)
-assets/js/data/qrcode.js               QR encoder, written from the spec
-assets/js/pages/*.js                   One module per page
-functions/index.js                     Cloud Functions for the live backend
-firestore.rules                        Deny-by-default rules
+assets/css/main.css      Design system
+assets/js/config.js      ← the only file you must edit
+assets/js/app.js         Shared runtime (header, footer, QR + ticket renderer)
+assets/js/qr.js          Self-contained QR encoder (no network, no service)
+assets/js/pages/*.js     Per-page behaviour
+backend/Code.gs          Google Apps Script backend (registrations + tickets)
+public/                  Images, icons, manifest
 ```
 
-## Running it
+## Quick preview
 
-Open `index.html` directly, or serve the folder:
+The site is static, so any local server works:
 
 ```bash
-python -m http.server 8080
+python -m http.server 8000
+# open http://localhost:8000
 ```
 
-Everything works from `file://` except the Firestore backend, which needs an
-`http(s)` origin.
+Opening `index.html` directly with `file://` also previews fine, but the
+backend requires `http(s)`.
 
-## Shared header and footer
+---
 
-The header and footer exist once, in `assets/js/components/header.js` and
-`footer.js`. Each page declares only a mount point:
+## 1. Point the site at your backend
 
-```html
-<header class="site-header" data-variant="overlay" data-page="home" data-component="header"></header>
-<footer class="site-footer" data-page="home" data-component="footer"></footer>
+Registrations have somewhere to go only after you create the backend. Until
+then the site runs in **offline demo mode**: tickets are stored in the browser
+and nothing is sent anywhere.
+
+### Create the Google Sheet
+
+Create a Google Sheet. Row 1 must be:
+
+```
+Code | Full Name | Phone | Email | Age | Business / Organization | Address |
+Ticket Type | Amount | Status | Registered At | Confirmed At | Checked In At
 ```
 
-`data-variant` is the only per-page difference — `overlay` for pages that open on
-a dark hero, `solid` for the light register and verify pages. The markup is
-otherwise byte-identical across all four pages, with `aria-current="page"` moving
-to whichever nav item is active.
+`Amount` is unused now that registration is free — leave it blank.
 
-Changing the nav or the ticket catalogue is a one-line edit in
-`assets/js/config.js`; every page picks it up.
+### Create the Apps Script
 
-## How a registration works
+1. [script.google.com](https://script.google.com) → **New project**
+2. Delete the placeholder code, paste in `backend/Code.gs`
+3. Set `SHEET_ID` near the top to the ID from your sheet URL
+   (`https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit`)
+4. Save, then pick `setup` from the function dropdown and click **Run**.
+   Approve the permission prompt.
+5. **Deploy → New deployment → Web app**
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+6. Copy the `.../exec` URL
 
-1. **Details** — validated on blur and on continue. Validation rules live in
-   `assets/js/utils.js` (`RULES` + `MESSAGES`) and are shared by the server in
-   `functions/index.js`, so both sides agree on what is valid.
-2. **Ticket** — one of four ticket types, plus the terms consent.
-3. **Review → payment** — the record is written through `Uduf.db`, which
-   allocates a unique code, then payment is taken and the ticket is marked paid.
-4. **Ticket** — rendered on screen with a QR code, downloadable as an A5 PDF.
+### Connect it
 
-`?code=UDUF-XXXXXX` on `register.html` brings the ticket back after a refresh, so
-the confirmation email can link straight to it.
-
-## Ticket codes
-
-`crypto.getRandomValues` over an alphabet with the ambiguous glyphs removed
-(`0/O`, `1/I/L`), formatted `UDUF-XXXXXX`. Uniqueness is checked on every write
-in both the local adapter and the Cloud Function.
-
-## The QR code
-
-`assets/js/data/qrcode.js` is a from-scratch QR encoder (byte mode, versions
-1–10, error correction L/M/Q/H) written to ISO/IEC 18004. It was validated
-against the `qrcode` npm package — identical module matrices apart from one mask
-selection — and every generated code decodes with `jsQR`.
-
-The encoded payload is the ticket code itself, so a gate scanner that reads the
-QR still gets something a human can type in if the scanner fails.
-
-## The PDF ticket
-
-`assets/js/components/pdf.js` is a small PDF writer (also dependency-free) that
-lays out an A5 ticket: dark header, attendee block, ticket code, QR, and
-instructions for gate staff. It uses the standard PDF fonts, so there is nothing
-to embed and the file stays around 8 KB.
-
-Note `Uduf.pdf.toBytes()` is used when building the download `Blob`: pdf.js
-returns a latin1 string, and a `Blob` built from a string directly would be
-UTF-8 encoded and corrupt every byte above 127.
-
-## Data layer
-
-`Uduf.db` has two adapters behind one interface:
-
-| `DATA.backend` | Behaviour |
-| --- | --- |
-| `local` (default) | localStorage. Works everywhere, needs no setup, **not secure** |
-| `firestore` | Firebase, via the CDN SDK loaded on demand |
-
-`local` exists so the whole experience is testable offline. It is not a security
-boundary: anyone with devtools can edit it. Before go-live, switch to `firestore`
-and deploy the rules and functions below.
-
-## Going live
-
-**1. Create a Firebase project**, then enable Firestore, Authentication and
-Cloud Functions.
-
-**2. Add your config** to `assets/js/config.js`:
+In `assets/js/config.js`:
 
 ```js
-var DATA = {
-  backend: 'firestore',
-  firebase: { apiKey: '...', authDomain: '...', projectId: '...', /* ... */ }
-};
+endpoint: 'https://script.google.com/macros/s/AKfy.../exec',
 ```
 
-**3. Deploy the backend:**
+That is the only required change.
 
-```bash
-cd functions
-npm install
-firebase deploy --only firestore:rules,functions
+---
+
+## 2. How tickets work
+
+A row is written with `Status = confirmed` the moment the form is submitted,
+and the code comes straight back to the page. There is nothing to approve.
+
+| Status | Meaning | Verify result |
+|---|---|---|
+| `confirmed` | Ticket issued | **Valid** |
+| `checked_in` | Already used for entry | Already used |
+| anything else | Not a ticket | Invalid |
+
+### At the door
+
+Scan the QR at `verify.html`, or type/paste the code. Both
+`UDUF-1234-5678` and the raw scanned string `UDUF2027/UDUF-1234-5678` work —
+the page normalises whatever it is given.
+
+Run `checkIn('UDUF-1234-5678')` from the Apps Script editor after a ticket has
+been used. `undoCheckIn()` reverses a mistake. `listCodes()` dumps every code.
+
+---
+
+## Ticket codes and the QR
+
+Codes are `UDUF-XXXX-XXXX`, generated server-side and checked for uniqueness.
+
+The QR payload is `UDUF2027/<CODE>` — for example `UDUF2027/UDUF-1234-5678`.
+That is deliberately alphanumeric-only (A–Z, 0–9, `-`, `/`), which keeps the
+symbol in its most compact QR mode so it scans quickly on an old phone.
+
+`assets/js/qr.js` is a complete QR encoder (ISO/IEC 18004: Reed–Solomon
+correction, block interleaving, all eight data masks with penalty scoring, BCH
+format and version info, versions 1–10, EC levels L/M/Q/H). It runs entirely in
+the browser — ticket codes are never sent to a third-party QR service. Output
+was verified module-for-module against the `qrcode` reference implementation
+across all four EC levels.
+
+---
+
+## Optional: Firestore instead of Google Sheets
+
+Keep `register.js` and `verify.js` as they are and replace the `Util.post`
+calls in `assets/js/app.js` with your own functions. The response contract
+they expect is:
+
+```js
+// register
+{ ok: true, code: 'UDUF-1234-5678', status: 'confirmed' }
+
+// verify
+{ ok: true, status: 'valid' | 'checked_in' | 'not_found', ticket: {
+    code, fullName, ticketType
+} }
 ```
 
-`firestore.rules` denies all client reads and writes to `attendees`. The browser
-never lists the collection; staff verification goes through the `verifyTicket`
-callable function, which reads a single document and returns only the fields
-needed at the door (name, business, phone, ticket type, masked email).
+---
 
-**4. Add a payment provider.** `DATA.endpoints.checkout` is empty, so payment
-currently runs in sandbox mode: the ticket is marked paid locally and the whole
-flow is testable. Set it to your function URL to go live, and replace
-`initialiseCharge` in `functions/index.js` with your provider's SDK call. Marking
-a ticket paid must only ever happen in the `paymentWebhook`, never in the
-browser.
+## Design notes
 
-**5. Configure secrets:**
+Colours come from the UDUF logo: near-black `#0A0A0C` with amber `#F0871E`.
+They live in `:root` at the top of `main.css` — change `--amber` and `--ink`
+to re-skin the whole site.
 
-```bash
-firebase functions:config:set \
-  uduf.webhooksecret="<PSP signing secret>" \
-  uduf.secretkey="<PSP secret key>"
-```
+**There are no gradients anywhere.** Every surface, button, scrim and overlay
+is a flat colour; image legibility comes from a single flat `rgba()` scrim
+rather than a gradient fade.
 
-## Content you may want to change
+Type is **Barlow Condensed** for display and **Inter** for body, loaded from
+Google Fonts with system fallbacks.
 
-All of these are placeholders in `assets/js/config.js`:
+The hero types three lines in sequence and only then reveals the countdown and
+buttons. Every animation collapses to a static layout under
+`prefers-reduced-motion: reduce`.
 
-- `EVENT.venue` — currently `Lagos, Nigeria`
-- `EVENT.email` / `EVENT.phone` — currently `hello@udufafrica.org` / `+234 800 000 0000`
-- `EVENT.socials` — placeholder profile URLs
-- `TICKETS` — Standard ₦25,000, Executive ₦75,000, Team (3 seats) ₦60,000, Student ₦10,000
-- The same prices are repeated in `TICKET_PRICES` in `functions/index.js`;
-  change them in both places.
+### Page weight
 
-`EVENT.copyrightYear` drives the footer copyright, so the site keeps saying
-© 2027 after 2027 rather than silently rolling over to the current year.
+Kept deliberately lean — about **140 KB** for a first visit on mobile:
 
-## Accessibility and motion
+- Hero uses `srcset` (640w / 1000w / 2000w), so phones fetch a 43 KB image
+  instead of the 237 KB original.
+- Header/footer logo is a 240×84 / 20 KB asset, not the 997×348 / 143 KB one.
+- Below-the-fold images are `loading="lazy"`, sized and aspect-ratio hinted.
+- `assets/js/qr.js` is loaded only on `register.html` and `verify.html`.
 
-Skip link on every page, a focus trap and focus restore in the mobile drawer,
-`aria-current` on the active nav item, `aria-live` on the verification result,
-visible focus rings, and a full `prefers-reduced-motion` path that disables the
-hero canvas, reveal animations and the page transition. Tickets print cleanly —
-the header, footer and buttons are stripped in `@media print`.
+---
+
+## Before you launch
+
+- [ ] `SHEET_ID` set in `backend/Code.gs` and `setup()` run once
+- [ ] Web app deployed with access set to **Anyone**
+- [ ] `endpoint` pasted into `assets/js/config.js`
+- [ ] `reliefafrica@gmail.com` correct in `config.js`
+- [ ] Ticket codes and QR codes tested on the actual door device

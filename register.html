@@ -2,89 +2,169 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Secure your spot — UDUF Africa 2027 Bootcamp</title>
-<meta name="description" content="Register for the UDUF Africa 2027 Active Leadership &amp; Entrepreneurship Bootcamp. 12&ndash;13 February 2027, Dolly Hill Conference Hall.">
-<meta name="theme-color" content="#FFFFFF">
-<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register — UDUF Africa 2027 Bootcamp</title>
+<meta name="description" content="Secure your place at the 2027 Active Leadership &amp; Entrepreneurship Bootcamp. 12–13 February 2027 at Dolly Hill Conference Hall.">
+<meta name="theme-color" content="#0A0A0C">
 
-<link rel="icon" href="public/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="public/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="public/favicon-32.png" sizes="32x32">
+<link rel="icon" href="public/favicon-64.png" sizes="64x64">
 <link rel="apple-touch-icon" href="public/apple-touch-icon.png">
+<link rel="manifest" href="public/manifest.webmanifest">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/main.css">
 </head>
 
-<body data-page="register" data-variant="solid">
+<body>
+
 <a class="skip-link" href="#main">Skip to content</a>
 
-<div data-component="header"></div>
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__grain"></div>
+</div>
+
+<header class="header" data-header></header>
 
 <main id="main">
 
-  <section class="phead">
-    <div class="wrap">
-      <div class="phead__grid">
-        <div>
-          <p class="eyebrow" data-reveal="left">Registration</p>
-          <h1 class="display display--xxl phead__title" data-reveal="type">SECURE<br>YOUR SPOT.</h1>
-        </div>
-        <div>
-          <p class="phead__sub" data-reveal="up">
-            Join UDUF Africa&rsquo;s 2027 Active Leadership &amp; Entrepreneurship Bootcamp.
-          </p>
-          <div class="phead__facts mt-3" data-reveal="up">
-            <p class="phead__fact" data-fact="dates"><span>12&ndash;13 February 2027</span></p>
-            <p class="phead__fact" data-fact="venue"><span>Dolly Hill Conference Hall</span></p>
-            <p class="phead__fact" data-fact="seats"><span>100&ndash;150 places</span></p>
+  <section class="page-head">
+    <div class="shell">
+      <p class="eyebrow eyebrow--center">Registration</p>
+      <h1>Register for<br><span class="accent">the Bootcamp</span></h1>
+      <p class="lede">Your journey starts here. Secure your place at the 2027 Active Leadership &amp; Entrepreneurship Bootcamp.</p>
+
+      <div class="page-head__meta">
+        <span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          12–13 February 2027
+        </span>
+        <span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.5 7-11a7 7 0 10-14 0c0 5.5 7 11 7 11z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.6" stroke="currentColor" stroke-width="1.7"/></svg>
+          Dolly Hill Conference Hall
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight" style="padding-top:0">
+    <div class="shell shell--narrow">
+      <form class="form-card" id="register-form" novalidate>
+
+        <!-- ---------- PERSONAL INFORMATION ---------- -->
+        <fieldset class="form-group" style="border:0">
+          <legend class="form-legend">
+            <span class="form-legend__step" aria-hidden="true">1</span>
+            Personal Information
+          </legend>
+
+          <div class="field" data-field>
+            <label class="field__label" for="full-name">Full Name</label>
+            <input class="field__input" type="text" id="full-name" name="fullName"
+                   autocomplete="name" placeholder="Enter your full name." required>
+            <span class="field__error" data-error></span>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- Split: registration form on the left, price and reassurance on the right. -->
-  <section class="section" style="border-top:0">
-    <div class="wrap">
-      <div class="reg">
-        <div data-reg-host data-reveal="up"></div>
+          <div class="grid-2">
+            <div class="field" data-field>
+              <label class="field__label" for="phone">Phone Number</label>
+              <input class="field__input" type="tel" id="phone" name="phone"
+                     autocomplete="tel" placeholder="Enter your active phone number." required>
+              <span class="field__error" data-error></span>
+            </div>
 
-        <aside class="reg__aside" data-reveal="up">
-          <div data-reg-price></div>
-          <div data-reg-side></div>
-        </aside>
-      </div>
-    </div>
-  </section>
+            <div class="field" data-field>
+              <label class="field__label" for="email">Email Address</label>
+              <input class="field__input" type="email" id="email" name="email"
+                     autocomplete="email" placeholder="Enter your email address." required>
+              <span class="field__error" data-error></span>
+            </div>
+          </div>
 
-  <section class="section section--flush" style="display:none" data-reg-confirm-wrap>
-    <div class="wrap" style="padding-block:var(--sect)">
-      <div data-reg-confirm></div>
+          <div class="field" data-field>
+            <label class="field__label" for="age">Age</label>
+            <input class="field__input" type="number" id="age" name="age"
+                   min="16" max="100" inputmode="numeric"
+                   placeholder="Enter your age." required>
+            <span class="field__error" data-error></span>
+          </div>
+        </fieldset>
+
+        <!-- ---------- BUSINESS / PROFESSIONAL ---------- -->
+        <fieldset class="form-group" style="border:0">
+          <legend class="form-legend">
+            <span class="form-legend__step" aria-hidden="true">2</span>
+            Business / Professional Information
+          </legend>
+
+          <div class="field" data-field>
+            <label class="field__label" for="business">
+              Business / Organization <span class="opt">(Optional)</span>
+            </label>
+            <input class="field__input" type="text" id="business" name="business"
+                   autocomplete="organization" placeholder="Enter your business, organization, or workplace.">
+            <span class="field__error" data-error></span>
+          </div>
+
+          <div class="field" data-field>
+            <label class="field__label" for="address">Address</label>
+            <textarea class="field__textarea" id="address" name="address" rows="3"
+                      autocomplete="street-address" placeholder="Enter your current address." required></textarea>
+            <span class="field__error" data-error></span>
+          </div>
+        </fieldset>
+
+        <!-- ---------- TICKET ---------- -->
+        <fieldset class="form-group" style="border:0;margin-bottom:0">
+          <legend class="form-legend">
+            <span class="form-legend__step" aria-hidden="true">3</span>
+            Your Ticket
+          </legend>
+
+          <label class="ticket">
+            <input type="radio" name="ticketType" value="Individual Ticket" checked>
+            <span class="ticket__radio" aria-hidden="true"></span>
+            <span class="ticket__body">
+              <span class="ticket__name">Individual Ticket</span>
+              <span class="ticket__note">One ticket for one attendee.</span>
+            </span>
+            <span class="ticket__price">Free</span>
+          </label>
+
+          <button class="btn btn--block" type="submit" id="submit-btn">
+            <span data-btn-label>Get My Ticket</span>
+          </button>
+
+          <div class="form-note" style="margin-top:1.6rem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5M12 7.8v.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+            <span>Registration is free. Your ticket and scannable QR code are issued the moment you submit this form.</span>
+          </div>
+        </fieldset>
+
+      </form>
+
+      <section class="result result--valid" id="register-result" hidden aria-live="polite"></section>
+
+      <p class="form-foot">Already registered? <a href="verify.html">Verify your ticket</a></p>
     </div>
   </section>
 
 </main>
 
-<div data-component="footer"></div>
+<footer class="footer" data-footer></footer>
 
-<script src="assets/js/config.js" defer></script>
-<script src="assets/js/utils.js" defer></script>
-<script src="assets/js/data/store.js" defer></script>
-<script src="assets/js/components/icons.js" defer></script>
-<script src="assets/js/components/toast.js" defer></script>
-<script src="assets/js/components/page-transition.js" defer></script>
-<script src="assets/js/components/reveal.js" defer></script>
-<script src="assets/js/components/header.js" defer></script>
-<script src="assets/js/components/footer.js" defer></script>
-<script src="assets/js/components/button.js" defer></script>
-<script src="assets/js/components/loading.js" defer></script>
-<script src="assets/js/data/qrcode.js" defer></script>
-<script src="assets/js/components/pdf.js" defer></script>
-<script src="assets/js/components/ticket.js" defer></script>
-<script src="assets/js/components/registration-form.js" defer></script>
-<script src="assets/js/pages/register.js" defer></script>
-<script src="assets/js/app.js" defer></script>
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <div class="loader__ring"></div>
+    <p class="loader__text">Loading</p>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/qr.js"></script>
+<script src="assets/js/pages/register.js"></script>
 </body>
 </html>
