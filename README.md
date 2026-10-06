@@ -166,5 +166,5 @@ Kept deliberately lean — about **140 KB** for a first visit on mobile:
 - [ ] `SHEET_ID` set in `backend/Code.gs` and `setup()` run once
 - [ ] Web app deployed with access set to **Anyone**
 - [ ] `endpoint` pasted into `assets/js/config.js`
-- [ ] `reliefafrica@gmail.com` correct in `config.js`
+- [ ] `udufafrica@gmail.com` correct in `config.js`
 - [ ] Ticket codes and QR codes tested on the actual door device

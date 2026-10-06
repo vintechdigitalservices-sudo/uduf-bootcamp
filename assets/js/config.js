@@ -35,7 +35,7 @@ window.UDUF = {
     end: '2027-02-13T17:00:00+01:00',
     dateLabel: '12–13 February 2027',
     venue: 'Dolly Hill Conference Hall',
-    email: 'reliefafrica@gmail.com',
+    email: 'udufafrica@gmail.com',
   },
 
   /* --------------------------------------------------------
