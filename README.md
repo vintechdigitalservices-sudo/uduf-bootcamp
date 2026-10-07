@@ -42,15 +42,14 @@ required for each participant.
 
 ## Flow
 
-1. **Select ticket** → **payment method** → **registration details** →
-   **payment**.
-2. **Online:** register → pay on Selar (`https://selar.com/m/uduf-africa`) →
-   return and mark the payment as made.
-   **Manual:** transfer to the bank shown on the page, choose JPG/PNG/PDF
-   receipt (up to 20 MB). The file is uploaded to Cloudinary
-   (`payment.cloudinary` in `config.js`) and only `receiptUrl` is saved.
+1. **Select ticket** → **payment method** → **registration details**.
+2. **Online:** choosing "Pay Online" opens the Selar store
+   (`https://selar.com/m/uduf-africa`) immediately; the user pays there, then
+   comes back, submits the details form and lands on the pending screen.
+   **Manual:** direct bank transfer to UDUF Africa, then upload the receipt
+   (JPG/PNG/PDF ≤ 20 MB) on the payment step.
 3. Registration is stored as **pending** (`paymentStatus: "awaiting_verification"`,
-   `status: "pending"`). An admin reviews the receipt and either approves
+   `status: "pending"`). An admin reviews the payment and either approves
    (issuing one ticket per participant) or rejects.
 4. On approval the attendee sees their ticket(s) + QR, plus the **WhatsApp
    group** link.

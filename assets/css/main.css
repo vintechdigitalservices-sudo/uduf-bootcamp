@@ -2022,6 +2022,56 @@ h1, h2, h3, h4 {
   .audience { grid-template-columns: 1fr; }
 }
 
+/* -------- hero on small phones: fewer, tighter elements -------- */
+@media (max-width: 520px) {
+  .hero {
+    padding-top: calc(var(--header-h) + 2.2rem);
+    padding-bottom: 4rem;
+  }
+
+  .hero__inner.is-typed .hero__eyebrow { animation-delay: 0s; }
+  .hero__inner.is-typed .hero__sub     { animation-delay: 0.05s; }
+  .hero__inner.is-typed .countdown     { animation-delay: 0.1s; }
+  .hero__inner.is-typed .hero__meta    { animation-delay: 0.15s; }
+  .hero__inner.is-typed .hero__actions { animation-delay: 0.2s; }
+
+  .hero__eyebrow { margin-bottom: 0.8rem; }
+
+  .hero__title {
+    font-size: clamp(2rem, 11.5vw, 2.9rem);
+    margin-bottom: 1.1rem;
+  }
+
+  .hero__sub {
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+  }
+
+  /* the italic tagline is trimmed — the title, date and CTA carry the message */
+  .hero__note { display: none; }
+
+  .hero__meta {
+    gap: 0.55rem 1.1rem;
+    margin-bottom: 1.7rem;
+  }
+
+  .hero__meta-item {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+  }
+
+  .hero__meta-item svg { width: 15px; height: 15px; }
+
+  .hero__dot { display: none; }
+
+  .hero__actions { gap: 0.8rem 1rem; }
+  .hero__actions .btn { min-height: 46px; }
+
+  .countdown { gap: 0.35rem 0.55rem; margin-bottom: 1.8rem; }
+
+  .scroll-cue { display: none; }
+}
+
 
 /* ============================================================
    MOTION PREFERENCES

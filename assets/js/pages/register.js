@@ -33,6 +33,17 @@
     registration: null,
   };
 
+  /* Online payers are taken straight to the Selar store the moment they
+     choose "Pay Online", so payment happens before details are collected. */
+  const selarStore = (CFG.payment && CFG.payment.selarStore) || '';
+  let selarOpened = false;
+
+  function openSelarOnce() {
+    if (!selarStore || selarOpened) return;
+    selarOpened = true;
+    window.open(selarStore, '_blank', 'noopener');
+  }
+
   function $(s, ctx) {
     return (ctx || document).querySelector(s);
   }
@@ -620,21 +631,19 @@
   }
 
   async function submitOnline() {
-    const btn = $('#btn-online-submit', paymentHost);
-    setBusy(btn, true, 'Saving registration…');
+    U.toast('Saving registration…', 'info');
     try {
-      const res = await Fire.createRegistration(buildPayload('pending_payment'));
+      const res = await Fire.createRegistration(buildPayload('awaiting_verification'));
       if (!res.ok) throw new Error(res.message || 'Could not save your registration.');
       sel.refId = res.refId;
       sel.registration = res.record;
       if (res.record && res.record.ticketStatus === 'generated') {
         renderConfirmed(res.record);
       } else {
-        renderSelar(res.record || { refId: res.refId });
+        renderPending(res.record || { refId: res.refId, paymentStatus: 'awaiting_verification' });
       }
     } catch (err) {
       U.toast(err.message || 'Something went wrong. Please try again.', 'error');
-      setBusy(btn, false);
     }
   }
 
@@ -723,6 +732,9 @@
           <span class="ref-id__value">${U.escapeHtml(refId)}</span>
           <button class="btn btn--sm btn--ghost" type="button" data-copy-reference>Copy</button>
         </div>
+        ${sel.method === 'online'
+          ? `<p class="form-note" style="margin-top:1.2rem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5M12 7.8v.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Didn't finish paying? <a href="${U.escapeHtml(selarStore)}" target="_blank" rel="noopener">Open the Selar store again</a>.</span></p>`
+          : ''}
         <p class="result__lede" style="margin-top:1.2rem">Keep this ID handy — you can check your status any time.</p>
         <div class="actions-row" style="justify-content:flex-start;margin-top:1.4rem">
           <a class="btn" href="verify.html?ref=${encodeURIComponent(refId)}">
@@ -822,6 +834,8 @@
       U.toast('Please correct the highlighted fields.', 'error');
       return;
     }
+    /* Online: Selar is already open — save and move to verification. */
+    if (sel.method === 'online') return submitOnline();
     renderPayment();
     go('payment');
   }
@@ -847,7 +861,12 @@
   });
 
   $$('input[name="ticketType"]', form).forEach((r) => r.addEventListener('change', () => (sel.ticketType = r.value)));
-  $$('input[name="paymentMethod"]', form).forEach((r) => r.addEventListener('change', () => (sel.method = r.value)));
+  $$('input[name="paymentMethod"]', form).forEach((r) =>
+    r.addEventListener('change', () => {
+      sel.method = r.value;
+      if (r.value === 'online') openSelarOnce();
+    })
+  );
 
   /* Start at the ticket picker (never the bare form). */
   sel.registration = null;
